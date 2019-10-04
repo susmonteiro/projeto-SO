@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <time.h>
 #include "fs.h"
 
 #define MAX_COMMANDS 150000
@@ -11,9 +13,9 @@
 int numberThreads = 0;
 tecnicofs* fs;
 
-char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE];
-int numberCommands = 0;
-int headQueue = 0;
+char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE]; //array de comandos
+int numberCommands = 0; //numero de comandos no array
+int headQueue = 0;  //indice do comando atual (processamento) 
 
 static void displayUsage (const char* appName){
     printf("Usage: %s\n", appName);
@@ -21,24 +23,26 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 1) {
+    if (argc != 3) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
 }
 
 int insertCommand(char* data) {
-    if(numberCommands != MAX_COMMANDS) {
-        strcpy(inputCommands[numberCommands++], data);
+    if(numberCommands != MAX_COMMANDS) { //verifica o maximo
+        strcpy(inputCommands[numberCommands++], data); 
+        //passa para array e incrementa global var numberCommands
         return 1;
     }
     return 0;
 }
 
 char* removeCommand() {
-    if((numberCommands + 1)){
+    // pop do comando
+    if((numberCommands + 1)){ //o primeiro comando e de indice 0
         numberCommands--;
-        return inputCommands[headQueue++];  
+        return inputCommands[headQueue++];  //incrementa o indice
     }
     return NULL;
 }
@@ -48,10 +52,21 @@ void errorParse(){
     //exit(EXIT_FAILURE);
 }
 
-void processInput(){
-    char line[MAX_INPUT_SIZE];
+void errorFile(){
+    fprintf(stderr, "Error: %s\n", strerror(errno));
+    //exit(EXIT_FAILURE);
+}
 
-    while (fgets(line, sizeof(line)/sizeof(char), stdin)) {
+void processInput(const char *pwd){
+    char line[MAX_INPUT_SIZE];
+    FILE *fp = fopen(pwd, "r");
+
+    if (!fp){
+        errorFile();
+        return;
+    }
+    
+    while (fgets(line, sizeof(line)/sizeof(char), fp)){
         char token;
         char name[MAX_INPUT_SIZE];
 
@@ -67,29 +82,32 @@ void processInput(){
             case 'd':
                 if(numTokens != 2)
                     errorParse();
-                if(insertCommand(line))
+                if(insertCommand(line))  
+                /* se for comando valido, insere o comando no vetor de comandos */
                     break;
                 return;
             case '#':
-                break;
+                break; /* se for um comentario, ignora essa linha? */
             default: { /* error */
                 errorParse();
             }
         }
     }
+
+    fclose(fp);
 }
 
 void applyCommands(){
-    while(numberCommands > 0){
-        const char* command = removeCommand();
-        if (command == NULL){
-            continue;
+    while(numberCommands > 0){ //enquanto houver comandos
+        const char* command = removeCommand(); //pop do comando
+        if (command == NULL){ //salvaguarda
+            continue; //nova iteracao do while
         }
 
         char token;
         char name[MAX_INPUT_SIZE];
-        int numTokens = sscanf(command, "%c %s", &token, name);
-        if (numTokens != 2) {
+        int numTokens = sscanf(command, "%c %s", &token, name); //scanf formatado "comando nome"
+        if (numTokens != 2) { //todos os comandos levam 1 input
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
@@ -98,18 +116,18 @@ void applyCommands(){
         int iNumber;
         switch (token) {
             case 'c':
-                iNumber = obtainNewInumber(fs);
-                create(fs, name, iNumber);
+                iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
+                create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
                 break;
             case 'l':
-                searchResult = lookup(fs, name);
+                searchResult = lookup(fs, name); //procura por nome, devolve inumber
                 if(!searchResult)
                     printf("%s not found\n", name);
                 else
                     printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
-                delete(fs, name);
+                delete(fs, name); // delete (bst style)
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -119,13 +137,30 @@ void applyCommands(){
     }
 }
 
+void print_tree_outfile(const char *pwd) {
+    FILE *fpout = fopen(pwd, "w");
+
+    if (!fpout) {
+        errorFile();
+        return;
+    }
+
+    print_tecnicofs_tree(fpout, fs); //imprimir a arvore
+    fclose(fpout);
+}
+
 int main(int argc, char* argv[]) {
+    clock_t t;
+
     parseArgs(argc, argv);
 
-    fs = new_tecnicofs();
-    processInput();
+    fs = new_tecnicofs(); //cria o fs (vazio)
+    processInput(argv[1]);
+    t = clock();
     applyCommands();
-    print_tecnicofs_tree(stdout, fs);
+    t = clock() - t;
+    print_tree_outfile(argv[2]);
+    printf("TecnicoFS completed in %.4f seconds.\n", ((float)t)/CLOCKS_PER_SEC);
 
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);

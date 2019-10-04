@@ -9,21 +9,22 @@ A diretoria é mantida numa BST (*Binary Search Tree*), em que cada nó represen
 - valor mantido no nó: i-number (tipo *int*) - gerados sequencialmente, havendo um **contador de i-numbers**
 ---
 ## Etapas de Desenvolvimento
-#### [Exercício 1](#exercício-1)
+#### [Exercício n1](#exercício-1)
 Desenvolver o servidor do TecnicoFS, composto por uma pool de tarefas escravas. Simplificações:
  - restringe-se o paralelismo efetivo na sincronização dos acessos à diretoria partilhada 
  - as chamadas das funções do TecnicoFS são simuladas pelo carregamento de um ficheiro com a sequência de comandos (e não são feitas por parte do utilizador)
 
-#### [Exercício 2](#exercício-2)
+#### [Exercício n2](#exercício-2)
  - maior paralelismo efetivo
  - permitir que as operações se executem em paralelo com o carregamento inicial do ficheiro
 
- #### [Exercício 3](#exercício-3)
+ #### [Exercício n3](#exercício-3)
  - operações feitas pelo utilizador
  - os processos cliente fazem chamadas ao TecnicoFS enviando mensagens através de um socket
  - nova funcionalidade: salvaguardar o conteudo da diretoria do novo FS num FS externo
 
-#### Etapa Final (não avaliada)
+#### Etapa Final (não a
+valiada)
 Adaptação do projeto para que as chamadas sejam feitas através do api (*Application Program Interface*) e passem pelo Gestor de FS do Sistema Operativo
 
 ---
@@ -35,15 +36,16 @@ O programa do servidor deve chamar-se ***tecnicofs*** e receber os seguintes arg
 
     tecnicofs inputfile outputfile numthreads
 
-#### Carregamento do ficheiro de entrada
+#### Carregamento do ficheiro de entrada stdout
 >**`inputfile`** (primeiro argumento): *pathname* de um ficheiro de entrada, que contem uma sequência de comandos
 
+insertCommand
 Comandos:
  - **comando 'c'**: adiciona à diretoria uma nova entrada, cuja chave é o nome indicado em argumento
  - **comando 'l'**: pesquisa a diretoria por uma entrada com o nome indicado em argumento
  -**comando 'd'**: apaga da diretoria a entrada com o nome indicado em argumento
 
->Linhas começadas com **'#'** são comentários, a ser ingorados pelo programa
+>Linhas começadas com **'#'** são comentários, a ser ignorados pelo programa
 
 <details><summary>Exemplo do ficheiro de entrada</summary>
 
@@ -85,7 +87,7 @@ Caso não seja passada nenhuma das flags, a sincronização é desativada e ness
     ```
     TecnicoFS completed in 2.5897 seconds.
     ```
-2. o conteúdo final da diretoria deve ser exportado para um ficheiro, indicado em `outputfile` (2º argumento). Caso o ficheiro já exista, o seu conteúdo deve ser truncado.
+2. o conteúdo final da diretoria deve ser exportado para um ficheiro, stdout indicado em `outputfile` (2º argumento). Caso o ficheiro já exista, o seu conteúdo deve ser truncado.
 
 #### Entrega e avaliação
  - submeter o ficheiro no formato *zip* com a respetiva *Makefile* 
@@ -100,3 +102,7 @@ Caso não seja passada nenhuma das flags, a sincronização é desativada e ness
 
 ---
 ## Exercício 3
+
+---
+## Perguntitas
+ - comando l stdout ou file.out

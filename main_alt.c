@@ -50,10 +50,12 @@ void errorParse(){
     //exit(EXIT_FAILURE);
 }
 
-void processInput(){
+void processInput(const char *pwd){
     char line[MAX_INPUT_SIZE];
-
-    while (fgets(line, sizeof(line)/sizeof(char), stdin)) {
+    FILE *fp;
+    
+    fp = fopen(pwd, "r");
+    while (fgets(line, sizeof(line)/sizeof(char), fp)){
         char token;
         char name[MAX_INPUT_SIZE];
 
@@ -80,19 +82,21 @@ void processInput(){
             }
         }
     }
+
+    fclose(fp);
 }
 
 void applyCommands(){
     while(numberCommands > 0){ //enquanto houver comandos
-        const char* command = removeCommand(); 
+        const char* command = removeCommand(); //pop do comando
         if (command == NULL){ //salvaguarda
             continue; //nova iteracao do while
         }
 
         char token;
         char name[MAX_INPUT_SIZE];
-        int numTokens = sscanf(command, "%c %s", &token, name);
-        if (numTokens != 2) {
+        int numTokens = sscanf(command, "%c %s", &token, name); //scanf formatado "comando nome"
+        if (numTokens != 2) { //todos os comandos levam 1 input
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
@@ -101,18 +105,18 @@ void applyCommands(){
         int iNumber;
         switch (token) {
             case 'c':
-                iNumber = obtainNewInumber(fs);
-                create(fs, name, iNumber);
+                iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
+                create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
                 break;
             case 'l':
-                searchResult = lookup(fs, name);
+                searchResult = lookup(fs, name); //procura por nome, devolve inumber
                 if(!searchResult)
                     printf("%s not found\n", name);
                 else
                     printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
-                delete(fs, name);
+                delete(fs, name); // delete (bst style)
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -126,9 +130,9 @@ int main(int argc, char* argv[]) {
     parseArgs(argc, argv);
 
     fs = new_tecnicofs(); //cria o fs (vazio)
-    processInput();
+    processInput(argv[1]);
     applyCommands();
-    print_tecnicofs_tree(stdout, fs);
+    print_tecnicofs_tree(stdout, fs); //imprimir a arvore
 
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);

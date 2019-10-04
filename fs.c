@@ -5,11 +5,13 @@
 
 
 int obtainNewInumber(tecnicofs* fs) {
+    // incrementa sequencialmente o Inumber
 	int newInumber = ++(fs->nextINumber);
 	return newInumber;
 }
 
 tecnicofs* new_tecnicofs(){
+    // cria o root do filesystem
 	tecnicofs*fs = malloc(sizeof(tecnicofs));
 	if (!fs) {
 		perror("failed to allocate tecnicofs");

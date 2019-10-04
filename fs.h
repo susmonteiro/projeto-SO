@@ -3,8 +3,8 @@
 #include "lib/bst.h"
 
 typedef struct tecnicofs {
-    node* bstRoot;
-    int nextINumber;
+    node* bstRoot; //nó da raiz da arvore
+    int nextINumber; //guarda o ultimo inumber atribuido (sequencial)
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);
