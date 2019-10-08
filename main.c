@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
-#include <time.h>
+#include <sys/time.h>
 #include "fs.h"
 
 #define MAX_COMMANDS 150000
@@ -149,18 +149,27 @@ void print_tree_outfile(const char *pwd) {
     fclose(fpout);
 }
 
+float time_taken(struct timeval start, struct timeval end) {
+    float secs;
+    float microseconds;
+    
+    secs = end.tv_sec - start.tv_sec; 
+    microseconds = (end.tv_usec - start.tv_usec)/(float)MILLION;
+    return secs + microseconds;
+} 
+
 int main(int argc, char* argv[]) {
-    clock_t t;
+    struct timeval start, end;
 
     parseArgs(argc, argv);
-
+    
     fs = new_tecnicofs(); //cria o fs (vazio)
     processInput(argv[1]);
-    t = clock();
+    gettimeofday(&start, NULL);
     applyCommands();
-    t = clock() - t;
+    gettimeofday(&end, NULL);
     print_tree_outfile(argv[2]);
-    printf("TecnicoFS completed in %.4f seconds.\n", ((float)t)/CLOCKS_PER_SEC);
+    printf("TecnicoFS completed in %0.4f seconds.\n", time_taken(start, end));
 
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);

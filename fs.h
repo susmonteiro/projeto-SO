@@ -2,6 +2,8 @@
 #define FS_H
 #include "lib/bst.h"
 
+#define MILLION 1000000
+
 typedef struct tecnicofs {
     node* bstRoot; //nó da raiz da arvore
     int nextINumber; //guarda o ultimo inumber atribuido (sequencial)
