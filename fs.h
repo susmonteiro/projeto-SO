@@ -2,7 +2,6 @@
 #define FS_H
 #include "lib/bst.h"
 
-#define MILLION 1000000
 
 typedef struct tecnicofs {
     node* bstRoot; //nó da raiz da arvore

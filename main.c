@@ -5,10 +5,14 @@
 #include <ctype.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <pthread.h>
 #include "fs.h"
+
 
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
+#define MILLION 1000000
+
 
 int numberThreads = 0;
 tecnicofs* fs;
@@ -23,7 +27,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 3) {
+    if (argc != 4) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -116,18 +120,24 @@ void applyCommands(){
         int iNumber;
         switch (token) {
             case 'c':
+            //w lock
                 iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
                 create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
+            // unlock
                 break;
             case 'l':
+            // r lock
                 searchResult = lookup(fs, name); //procura por nome, devolve inumber
+            // unlock
                 if(!searchResult)
                     printf("%s not found\n", name);
                 else
                     printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
+            // w lock
                 delete(fs, name); // delete (bst style)
+            // unlock
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -135,6 +145,7 @@ void applyCommands(){
             }
         }
     }
+
 }
 
 void print_tree_outfile(const char *pwd) {
@@ -158,6 +169,24 @@ float time_taken(struct timeval start, struct timeval end) {
     return secs + microseconds;
 } 
 
+void threads_init(int n) {
+    int i;
+    if (n < 1)
+    // erroooo
+        exit(EXIT_FAILURE);
+    pthread_t tid[n];
+    for (i = 0; i < n; i++) {
+        if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL) != 0) {
+            // ERROOOOOOO
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    for (i = 0; i < n; i++){ //terminam todas as tarefas
+        pthread_join (tid[i], NULL);
+    }
+}
+
 int main(int argc, char* argv[]) {
     struct timeval start, end;
 
@@ -165,8 +194,9 @@ int main(int argc, char* argv[]) {
     
     fs = new_tecnicofs(); //cria o fs (vazio)
     processInput(argv[1]);
-    gettimeofday(&start, NULL);
-    applyCommands();
+
+    gettimeofday(&start, NULL); //ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    threads_init(atoi(argv[3]));
     gettimeofday(&end, NULL);
     print_tree_outfile(argv[2]);
     printf("TecnicoFS completed in %0.4f seconds.\n", time_taken(start, end));
