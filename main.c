@@ -5,7 +5,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <pthread.h>
 #include "fs.h"
 
 
@@ -101,7 +100,17 @@ void processInput(const char *pwd){
     fclose(fp);
 }
 
+void opened() {
+    pthread_mutex_unlock(&fs->mutex);
+}
+
+void closed() {
+    pthread_mutex_lock(&fs->mutex);
+
+}
+
 void applyCommands(){
+    closed();
     while(numberCommands > 0){ //enquanto houver comandos
         const char* command = removeCommand(); //pop do comando
         if (command == NULL){ //salvaguarda
@@ -145,7 +154,7 @@ void applyCommands(){
             }
         }
     }
-
+    opened();
 }
 
 void print_tree_outfile(const char *pwd) {
