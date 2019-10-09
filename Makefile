@@ -16,7 +16,7 @@ ADDICFLAGS=
 all: tecnicofs
 
 tecnicofs-nosync: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs lib/bst.o fs.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o fs.o main.o
 	make clean_ofiles
 
 tecnicofs-mutex: ADDICFLAGS = -DMUTEX 
@@ -48,4 +48,4 @@ clean:
 	rm -f lib/*.o *.o tecnicofs*
 
 run: tecnicofs
-	./tecnicofs
+	./tecnicofs-nosync in out 1

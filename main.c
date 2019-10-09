@@ -103,12 +103,15 @@ void processInput(const char *pwd){
 }
 
 void opened() {
-    pthread_mutex_unlock(&fs->mutex);
+    #ifdef MUTEX
+        pthread_mutex_unlock(&fs->mutex);
+    #endif
 }
 
 void closed() {
-    pthread_mutex_lock(&fs->mutex);
-
+    #ifdef MUTEX
+        pthread_mutex_lock(&fs->mutex);
+    #endif
 }
 
 void applyCommands(){
@@ -179,23 +182,35 @@ float time_taken(struct timeval start, struct timeval end) {
     microseconds = (end.tv_usec - start.tv_usec)/(float)MILLION;
     return secs + microseconds;
 } 
-
-void threads_init(int n) {
-    int i;
-    if (n < 1)
-    // erroooo
-        exit(EXIT_FAILURE);
-    pthread_t tid[n];
-    for (i = 0; i < n; i++) {
-        if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL) != 0) {
-            // ERROOOOOOO
+#if defined(MUTEX) || defined(RWLOCK) //para compilar sem -lphtread para a versao nosync 
+    void threads_init(int n) {
+        int i;
+        if (n < 1)
+        // erroooo
             exit(EXIT_FAILURE);
+
+        pthread_t tid[n];
+        for (i = 0; i < n; i++) {
+            if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL) != 0) {
+                // ERROOOOOOO
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        for (i = 0; i < n; i++){ //terminam todas as tarefas
+            pthread_join (tid[i], NULL);
         }
     }
+#endif
 
-    for (i = 0; i < n; i++){ //terminam todas as tarefas
-        pthread_join (tid[i], NULL);
-    }
+void startCommands(const char* nThreads){
+    #if defined(MUTEX) || defined(RWLOCK)
+        int n;
+        if((n = atoi(nThreads)) < 1) exit(EXIT_FAILURE); //erro para argv[3] < 1
+        threads_init(n);
+    #else   //para versao nosync (sem threads)
+        applyCommands();
+    #endif
 }
 
 int main(int argc, char* argv[]) {
@@ -207,8 +222,9 @@ int main(int argc, char* argv[]) {
     processInput(argv[1]);
 
     gettimeofday(&start, NULL); //ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    threads_init(atoi(argv[3]));
+    startCommands(argv[3]);
     gettimeofday(&end, NULL);
+
     print_tree_outfile(argv[2]);
     printf("TecnicoFS completed in %0.4f seconds.\n", time_taken(start, end));
 
