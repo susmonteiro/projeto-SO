@@ -44,8 +44,10 @@ int insertCommand(char* data) {
 char* removeCommand() {
     // pop do comando
     if((numberCommands + 1)){ //o primeiro comando e de indice 0
-        numberCommands--;
-        return inputCommands[headQueue++];  //incrementa o indice
+        if(numberCommands > 0){
+            numberCommands--;
+            return inputCommands[headQueue++];  //incrementa o indice
+        }
     }
     return NULL;
 }
