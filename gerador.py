@@ -22,7 +22,6 @@ def gerar():
     comands = commandArray()
     for i in range(int(sys.argv[1])):
         cmd = random.choice(comands)  
-        print(cmd)
         fpin.write(cmd + " ")
         nome = ""
         for j in range(random.randint(1, 40)):

@@ -8,7 +8,11 @@ typedef struct tecnicofs {
     node* bstRoot; //nó da raiz da arvore
     int nextINumber; //guarda o ultimo inumber atribuido (sequencial)
     
-    pthread_mutex_t mutex;
+    #ifdef MUTEX
+        pthread_mutex_t mutex;
+    #elif RWLOCK
+        // inicializar rwlock
+    #endif
 } tecnicofs;
 
 int obtainNewInumber(tecnicofs* fs);
