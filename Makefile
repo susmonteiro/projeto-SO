@@ -3,7 +3,7 @@
 
 CC   = gcc
 LD   = gcc
-CFLAGS =-Wall -std=gnu99 -I../
+CFLAGS =-Wall -g -std=gnu99 -I../
 LDFLAGS=-lm
 
 #Flag adicional que muda conforme a implementacao
@@ -13,22 +13,22 @@ ADDICFLAGS=
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: all clean run
 
-all: tecnicofs
+all: 
+	make tecnicofs-nosync 
+	make tecnicofs-mutex 
+	make tecnicofs-rwlock 
 
-tecnicofs-nosync: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o fs.o main.o
-	make clean_ofiles
+#tecnicofs-nosync: ADDICFLAGS = 	(REDUNDANTE)
+tecnicofs-nosync: clean_ofiles lib/bst.o fs.o locks.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o fs.o locks.o main.o
 
 tecnicofs-mutex: ADDICFLAGS = -DMUTEX 
-tecnicofs-mutex: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-mutex lib/bst.o fs.o main.o
-	make clean_ofiles
+tecnicofs-mutex: clean_ofiles lib/bst.o fs.o locks.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-mutex lib/bst.o fs.o locks.o main.o
 
 tecnicofs-rwlock: ADDICFLAGS = -DRWLOCK 
-tecnicofs-rwlock: lib/bst.o fs.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-mutex lib/bst.o fs.o main.o
-	make clean_ofiles
-
+tecnicofs-rwlock: clean_ofiles lib/bst.o fs.o locks.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-rwlock lib/bst.o fs.o locks.o main.o
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o lib/bst.o -c lib/bst.c
@@ -36,8 +36,12 @@ lib/bst.o: lib/bst.c lib/bst.h
 fs.o: fs.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o fs.o -c fs.c
 
+locks.o: locks.c locks.h fs.h 
+	$(CC) $(CFLAGS) $(ADDICFLAGS) -o locks.o -c locks.c
+
 main.o: main.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o main.o -c main.c
+
 
 clean_ofiles:
 	@echo Cleaning Ofiles...
@@ -47,5 +51,5 @@ clean:
 	@echo Cleaning...
 	rm -f lib/*.o *.o tecnicofs*
 
-run: tecnicofs
+run: tecnicofs-nosync
 	./tecnicofs-nosync in out 1

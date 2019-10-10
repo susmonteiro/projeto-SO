@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include "fs.h"
+#include "locks.h"
 
 
 #define MAX_COMMANDS 150000
@@ -102,22 +103,12 @@ void processInput(const char *pwd){
     fclose(fp);
 }
 
-void opened() {
-    #ifdef MUTEX
-        pthread_mutex_unlock(&fs->mutex);
-    #endif
-}
-
-void closed() {
-    #ifdef MUTEX
-        pthread_mutex_lock(&fs->mutex);
-    #endif
-}
 
 void applyCommands(){
-    closed();
     while(numberCommands > 0){ //enquanto houver comandos
+        wClosed_rc(fs);
         const char* command = removeCommand(); //pop do comando
+        wOpened_rc(fs);
         if (command == NULL){ //salvaguarda
             continue; //nova iteracao do while
         }
@@ -134,24 +125,24 @@ void applyCommands(){
         int iNumber;
         switch (token) {
             case 'c':
-            //w lock
+                wClosed(fs);//w lock
                 iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
                 create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
-            // unlock
+                wOpened(fs);// unlock
                 break;
             case 'l':
-            // r lock
+                rClosed(fs);// r lock   
                 searchResult = lookup(fs, name); //procura por nome, devolve inumber
-            // unlock
+                rOpened(fs);// unlock
                 if(!searchResult)
                     printf("%s not found\n", name);
                 else
                     printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
-            // w lock
+                wClosed(fs);// w lock
                 delete(fs, name); // delete (bst style)
-            // unlock
+                wOpened(fs);// unlock
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -159,7 +150,6 @@ void applyCommands(){
             }
         }
     }
-    opened();
 }
 
 void print_tree_outfile(const char *pwd) {
@@ -209,7 +199,9 @@ void startCommands(const char* nThreads){
         if((n = atoi(nThreads)) < 1) exit(EXIT_FAILURE); //erro para argv[3] < 1
         threads_init(n);
     #else   //para versao nosync (sem threads)
-        applyCommands();
+        if(atoi(nThreads) != 1)
+            exit(EXIT_FAILURE); //ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+        applyCommands();        
     #endif
 }
 
@@ -226,7 +218,7 @@ int main(int argc, char* argv[]) {
     gettimeofday(&end, NULL);
 
     print_tree_outfile(argv[2]);
-    printf("TecnicoFS completed in %0.4f seconds.\n", time_taken(start, end));
+    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);

@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import random
 import string
 import sys
@@ -26,6 +28,8 @@ def gerar():
         nome = ""
         for j in range(random.randint(1, 40)):
             nome += random.choice(string.ascii_letters)
+       
+        #push(nome) depois ver l ou d pop
         nome += "\n"
         fpin.write(nome)
 
