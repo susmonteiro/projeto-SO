@@ -105,9 +105,15 @@ void processInput(const char *pwd){
 
 
 void applyCommands(){
-    while(numberCommands > 0){ //enquanto houver comandos
+    while(numberCommands > 0){ //enquanto houver comando
+        int iNumber;
+
         wClosed_rc(fs);
         const char* command = removeCommand(); //pop do comando
+        // os inumbers tem que ser do 
+        if(command[0] == 'c') // associar o inumber dentro do primeiro mutex
+            iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
+
         wOpened_rc(fs);
         if (command == NULL){ //salvaguarda
             continue; //nova iteracao do while
@@ -122,11 +128,10 @@ void applyCommands(){
         }
 
         int searchResult;
-        int iNumber;
         switch (token) {
             case 'c':
                 wClosed(fs);//w lock
-                iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
+                // removemos o inumber
                 create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
                 wOpened(fs);// unlock
                 break;

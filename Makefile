@@ -51,5 +51,13 @@ clean:
 	@echo Cleaning...
 	rm -f lib/*.o *.o tecnicofs*
 
-run: tecnicofs-nosync
-	./tecnicofs-nosync in out 1
+run: 
+	make
+	./tecnicofs-nosync inputs/test1.txt out1 1
+	./tecnicofs-mutex inputs/test1.txt out2 2
+	./tecnicofs-rwlock inputs/test1.txt out3 3
+	@echo ==============
+	diff out1 out2
+	@echo ==============
+	diff out2 out3
+	@echo ==============
