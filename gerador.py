@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import random
 import string
 import sys
@@ -19,16 +21,33 @@ def commandArray():
 def gerar():
     fpin = open(sys.argv[2], "w")
     comands=()
+    db=[]
     comands = commandArray()
+    line = ""
     for i in range(int(sys.argv[1])):
         cmd = random.choice(comands)  
-        print(cmd)
-        fpin.write(cmd + " ")
-        nome = ""
-        for j in range(random.randint(1, 40)):
-            nome += random.choice(string.ascii_letters)
-        nome += "\n"
-        fpin.write(nome)
+        if cmd == 'c':
+
+            line = cmd + ' '  
+            nome = ""
+            for j in range(random.randint(1, 40)):
+                nome += random.choice(string.ascii_letters)
+            line += nome + "\n"
+        
+            db += [nome]
+        elif cmd == 'd':
+            if len(db) == 0:
+                continue
+            nome = random.choice(db)
+            db.remove(nome)
+            line = cmd + ' ' + nome + '\n'
+        elif cmd == 'l':
+            if len(db) == 0:
+                continue
+            nome = random.choice(db)
+            line = cmd + ' ' + nome + '\n'
+
+        fpin.write(line)
 
     fpin.close()
 
