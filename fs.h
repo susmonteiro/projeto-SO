@@ -9,13 +9,12 @@ typedef struct tecnicofs {
     int nextINumber; //guarda o ultimo inumber atribuido (sequencial)
     
     #ifdef MUTEX
-        pthread_mutex_t mutex_rm; // bloqueio para removeCommand()
-        pthread_mutex_t mutex_ap; // bloqueio para os comandos c, l, d
+        pthread_mutex_t mutex_rm;   // bloqueio para removeCommand()
+        pthread_mutex_t mutex_ap;   // bloqueio para os comandos c, l, d
     #elif RWLOCK
         //mutex semelhante ao wrlock
         pthread_mutex_t mutex_rm;   // bloqueio para removeCommand()
-        pthread_mutex_t mutex_ap; // bloqueio para os comandos c, l, d
-        pthread_rwlock_t rwlock; // bloqueio para os comandos c, l, d
+        pthread_rwlock_t rwlock;    // bloqueio para os comandos c, l, d
     #endif
 } tecnicofs;
 

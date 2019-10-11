@@ -1,6 +1,7 @@
 #ifndef LOCKS_H
 #define LOCKS_H
 
+#include <stdlib.h>
 #include "fs.h"
 
 void wOpened(tecnicofs *fs);

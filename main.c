@@ -12,6 +12,7 @@
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 #define MILLION 1000000
+#define N_ARGC 4
 
 
 int numberThreads = 0;
@@ -27,7 +28,7 @@ static void displayUsage (const char* appName){
 }
 
 static void parseArgs (long argc, char* const argv[]){
-    if (argc != 4) {
+    if (argc != N_ARGC) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     }
@@ -55,22 +56,21 @@ char* removeCommand() {
 
 void errorParse(){
     fprintf(stderr, "Error: command invalid\n");
-    //exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }
 
-void errorFile(){
+/* funcao que imprime erro em funcoes que tenham errno definido */
+void errnoPrint(){
     fprintf(stderr, "Error: %s\n", strerror(errno));
-    //exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
 }
 
 void processInput(const char *pwd){
     char line[MAX_INPUT_SIZE];
     FILE *fp = fopen(pwd, "r");
 
-    if (!fp){
-        errorFile();
-        return;
-    }
+    if (!fp)
+        errnoPrint(); // se o ficheiro nao for aberto
     
     while (fgets(line, sizeof(line)/sizeof(char), fp)){
         char token;
@@ -93,14 +93,17 @@ void processInput(const char *pwd){
                     break;
                 return;
             case '#':
-                break; /* se for um comentario, ignora essa linha? */
+                break; /* se for um comentario, ignora essa linha */
             default: { /* error */
                 errorParse();
             }
         }
     }
 
-    fclose(fp);
+    if(fclose(fp)){ // se o ficheiro nao for corretamente fechado
+        fprintf(stderr, "Error: file not closed.\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -108,13 +111,14 @@ void applyCommands(){
     while(numberCommands > 0){ //enquanto houver comando
         int iNumber;
 
-        wClosed_rc(fs);
+        wClosed_rc(fs); // impede acessos simultaneos ao vetor de comandos
         const char* command = removeCommand(); //pop do comando
-        // os inumbers tem que ser do 
-        if(command[0] == 'c') // associar o inumber dentro do primeiro mutex
+        /* caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
+        para que o mesmo comando tenha sempre o mesmo inumber associado*/
+        if(command[0] == 'c')
             iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
-
         wOpened_rc(fs);
+
         if (command == NULL){ //salvaguarda
             continue; //nova iteracao do while
         }
@@ -130,24 +134,23 @@ void applyCommands(){
         int searchResult;
         switch (token) {
             case 'c':
-                wClosed(fs);//w lock
-                // removemos o inumber
-                create(fs, name, iNumber); // :))) adiciona um novo no (bst style) 
-                wOpened(fs);// unlock
+                wClosed(fs);    // bloqueia leituras e escritas do fs
+                create(fs, name, iNumber);
+                wOpened(fs);
                 break;
             case 'l':
-                rClosed(fs);// r lock   
+                rClosed(fs);    // permite leituras simultaneas, impede escrita
                 searchResult = lookup(fs, name); //procura por nome, devolve inumber
-                rOpened(fs);// unlock
+                rOpened(fs);
                 if(!searchResult)
                     printf("%s not found\n", name);
                 else
                     printf("%s found with inumber %d\n", name, searchResult);
                 break;
             case 'd':
-                wClosed(fs);// w lock
-                delete(fs, name); // delete (bst style)
-                wOpened(fs);// unlock
+                wClosed(fs);    // bloqueia leituras e escritas do fs
+                delete(fs, name); 
+                wOpened(fs);
                 break;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -157,11 +160,12 @@ void applyCommands(){
     }
 }
 
+/* Abre o ficheiro de output e escreve neste a arvore */
 void print_tree_outfile(const char *pwd) {
     FILE *fpout = fopen(pwd, "w");
 
     if (!fpout) {
-        errorFile();
+        errnoPrint();
         return;
     }
 
@@ -169,6 +173,7 @@ void print_tree_outfile(const char *pwd) {
     fclose(fpout);
 }
 
+/* A funcao devolve a diferenca entre tempo inicial e fical, em segundos*/
 float time_taken(struct timeval start, struct timeval end) {
     float secs;
     float microseconds;
@@ -176,55 +181,61 @@ float time_taken(struct timeval start, struct timeval end) {
     secs = end.tv_sec - start.tv_sec; 
     microseconds = (end.tv_usec - start.tv_usec)/(float)MILLION;
     return secs + microseconds;
-} 
-#if defined(MUTEX) || defined(RWLOCK) //para compilar sem -lphtread para a versao nosync 
-    void threads_init(int n) {
-        int i;
-        if (n < 1)
-        // erroooo
+}
+
+/* Inicializa a pool de tarefas que chamam a funcao applyCommands()
+   Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
+void threads_init() {
+    struct timeval start, end; //tempo
+    int i;
+    pthread_t tid[numberThreads]; // lista das tarefas
+
+    if(gettimeofday(&start, NULL))  errnoPrint(); //erro
+
+    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
+        if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL)) {
+            fprintf(stderr, "Error: not able to create thread.\n");
             exit(EXIT_FAILURE);
-
-        pthread_t tid[n];
-        for (i = 0; i < n; i++) {
-            if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL) != 0) {
-                // ERROOOOOOO
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        for (i = 0; i < n; i++){ //terminam todas as tarefas
-            pthread_join (tid[i], NULL);
         }
     }
-#endif
 
+    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas
+        if (pthread_join (tid[i], NULL)) {
+            fprintf(stderr, "Error: not able to terminate thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if(gettimeofday(&end, NULL))    errnoPrint(); //erro
+    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
+}
+
+/* Define o numero de tarefas que vao ser criadas na pool, [threads_init()]
+   Numero de threads e' uma variavel global */
 void startCommands(const char* nThreads){
     #if defined(MUTEX) || defined(RWLOCK)
-        int n;
-        if((n = atoi(nThreads)) < 1) exit(EXIT_FAILURE); //erro para argv[3] < 1
-        threads_init(n);
+        if((numberThreads = atoi(nThreads)) < 1) {
+            fprintf(stderr, "Error: number of threads invalid.\n");
+            exit(EXIT_FAILURE); 
+        }
     #else   //para versao nosync (sem threads)
-        if(atoi(nThreads) != 1)
-            exit(EXIT_FAILURE); //ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-        applyCommands();        
+        if(atoi(nThreads) != 1) {
+            fprintf(stderr, "Error: number of threads invalid.\n");
+            exit(EXIT_FAILURE); 
+        }
+        numberThreads = 1; // variavel global
     #endif
+    threads_init(); // inicia pool de tarefas
 }
 
 int main(int argc, char* argv[]) {
-    struct timeval start, end;
-
-    parseArgs(argc, argv);
+    parseArgs(argc, argv);  // verifica numero de argumentos
     
-    fs = new_tecnicofs(); //cria o fs (vazio)
-    processInput(argv[1]);
-
-    gettimeofday(&start, NULL); //ERROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    startCommands(argv[3]);
-    gettimeofday(&end, NULL);
-
-    print_tree_outfile(argv[2]);
-    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
-
+    fs = new_tecnicofs();           // cria o fs (vazio)
+    processInput(argv[1]);          // carrega o vetor global com comandos
+    startCommands(argv[3]);         // inicializa as tarefas e chama a funcao applyCommands()
+    print_tree_outfile(argv[2]);    // imprime o conteudo final da fs para o ficheiro de saida
+    
     free_tecnicofs(fs);
     exit(EXIT_SUCCESS);
 }

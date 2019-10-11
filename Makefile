@@ -3,8 +3,8 @@
 
 CC   = gcc
 LD   = gcc
-CFLAGS =-Wall -g -std=gnu99 -I../
-LDFLAGS=-lm
+CFLAGS =-Wall -std=gnu99 -I../
+LDFLAGS=-lm -lpthread
 
 #Flag adicional que muda conforme a implementacao
 ADDICFLAGS=
@@ -24,11 +24,11 @@ tecnicofs-nosync: clean_ofiles lib/bst.o fs.o locks.o main.o
 
 tecnicofs-mutex: ADDICFLAGS = -DMUTEX 
 tecnicofs-mutex: clean_ofiles lib/bst.o fs.o locks.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-mutex lib/bst.o fs.o locks.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-mutex lib/bst.o fs.o locks.o main.o
 
 tecnicofs-rwlock: ADDICFLAGS = -DRWLOCK 
 tecnicofs-rwlock: clean_ofiles lib/bst.o fs.o locks.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -lpthread -o tecnicofs-rwlock lib/bst.o fs.o locks.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-rwlock lib/bst.o fs.o locks.o main.o
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o lib/bst.o -c lib/bst.c
@@ -53,11 +53,6 @@ clean:
 
 run: 
 	make
-	./tecnicofs-nosync inputs/test1.txt out1 1
-	./tecnicofs-mutex inputs/test1.txt out2 2
-	./tecnicofs-rwlock inputs/test1.txt out3 3
-	@echo ==============
-	diff out1 out2
-	@echo ==============
-	diff out2 out3
-	@echo ==============
+	./tecnicofs-nosync inputs/test4.txt out1 1
+	./tecnicofs-mutex inputs/test4.txt out2 2
+	./tecnicofs-rwlock inputs/test4.txt out3 3
