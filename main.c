@@ -113,15 +113,15 @@ void applyCommands(){
 
         wClosed_rc(fs); // impede acessos simultaneos ao vetor de comandos
         const char* command = removeCommand(); //pop do comando
-        /* caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
-        para que o mesmo comando tenha sempre o mesmo inumber associado*/
+        if (command == NULL){ //salvaguarda
+            wOpened_rc(fs);
+            continue; //nova iteracao do while
+        }
+        /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
+        para que o mesmo ficheiro tenha sempre o mesmo inumber associado independentemente da ordem de execucao */
         if(command[0] == 'c')
             iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
         wOpened_rc(fs);
-
-        if (command == NULL){ //salvaguarda
-            continue; //nova iteracao do while
-        }
 
         char token;
         char name[MAX_INPUT_SIZE];
