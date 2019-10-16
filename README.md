@@ -99,10 +99,17 @@ Caso não seja passada nenhuma das flags, a sincronização é desativada e ness
 
 ---
 ## Exercício 2
+Argumentos da linha de comandos 
+
+        tecnicofs inputfile outputfile numthreads numbuckets
+
+####Execução incremental de comandos
+- carregamento dos comandos em paralelo com a sua execução (em vez de ser feito em duas fases)
+
+> Caso uma tarefa escrava esteja livre e o vetor de comandos não tenha nenhum comando,esta deve aguardar até que surja novo comando no vetor ou até que o final do ficheiro de entrada seja alcançado
 
 ---
 ## Exercício 3
 
 ---
 ## Perguntitas
- - comando l stdout ou file.out

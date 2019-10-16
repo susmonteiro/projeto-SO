@@ -4,7 +4,7 @@
 CC   = gcc
 LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../
-LDFLAGS=-lm -lpthread
+LDFLAGS=-lm -pthread
 
 #Flag adicional que muda conforme a implementacao
 ADDICFLAGS=

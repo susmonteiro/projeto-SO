@@ -18,16 +18,16 @@ void erroCheck(int returnval){
     }
 }
 /* Fecha o write_lock do acesso ao vetor de comandos */ 
-void wClosed_rc(pthread_mutex_t *mutex) {
+void wClosed_rc(tecnicofs *fs) {
     #if defined(MUTEX) || defined(RWLOCK)
-        erroCheck(pthread_mutex_lock(mutex));
+        erroCheck(pthread_mutex_lock(&fs->mutex_rm));
     #endif
 }
 
 /* Abre o write_lock do acesso ao vetor de comandos */
-void wOpened_rc(pthread_mutex_t *mutex) { 
+void wOpened_rc(tecnicofs *fs) { 
     #if defined(MUTEX) || defined(RWLOCK)
-        erroCheck(pthread_mutex_unlock(mutex));
+        erroCheck(pthread_mutex_unlock(&fs->mutex_rm));
     #endif
 }
 

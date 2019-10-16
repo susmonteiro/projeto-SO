@@ -17,7 +17,6 @@
 
 int numberThreads = 0;
 tecnicofs* fs;
-pthread_mutex_t *mutex_rm;   // bloqueio para removeCommand()
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE]; //array de comandos
 int numberCommands = 0; //numero de comandos no array
@@ -112,17 +111,17 @@ void applyCommands(){
     while(numberCommands > 0){ //enquanto houver comando
         int iNumber;
 
-        wClosed_rc(mutex_rm); // impede acessos simultaneos ao vetor de comandos
+        wClosed_rc(fs); // impede acessos simultaneos ao vetor de comandos
         const char* command = removeCommand(); //pop do comando
-        if (command == NULL){ //salvaguarda
-            wOpened_rc(mutex_rm);
-            continue; //nova iteracao do while
-        }
-        /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
-        para que o mesmo ficheiro tenha sempre o mesmo inumber associado independentemente da ordem de execucao */
+        /* caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
+        para que o mesmo comando tenha sempre o mesmo inumber associado*/
         if(command[0] == 'c')
             iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
-        wOpened_rc(mutex_rm);
+        wOpened_rc(fs);
+
+        if (command == NULL){ //salvaguarda
+            continue; //nova iteracao do while
+        }
 
         char token;
         char name[MAX_INPUT_SIZE];
