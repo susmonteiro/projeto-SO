@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "locks.h": "c",
+        "pthread.h": "c"
+    }
+}
