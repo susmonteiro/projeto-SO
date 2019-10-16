@@ -103,11 +103,27 @@ Argumentos da linha de comandos
 
         tecnicofs inputfile outputfile numthreads numbuckets
 
-####Execução incremental de comandos
+#### Execução incremental de comandos
 - carregamento dos comandos em paralelo com a sua execução (em vez de ser feito em duas fases)
+- caso uma tarefa escrava esteja livre e o vetor de comandos não tenha nenhum comando,esta deve aguardar até que surja novo comando no vetor ou até que o final do ficheiro de entrada seja alcançado
+- na nova solução, quando o vetor de comandos estiver totalmente preenchido, a tarefa que o preenche deve esperar por que novas posições sejam libertadas 
+- a dimensão do vetor de comandos deve passar a ser 10
+- o argumento de linha de comandos ​numthreads determina o número de tarefas escravas, excluindo a tarefa que carrega o vetor de comandos
+- o tempo deve passar a ser medido desde o momento em que o vetor começa a ser carregado 
 
-> Caso uma tarefa escrava esteja livre e o vetor de comandos não tenha nenhum comando,esta deve aguardar até que surja novo comando no vetor ou até que o final do ficheiro de entrada seja alcançado
+#### Nova operação: renomear ficheiro
+Esta operação recebe dois argumentos: *nome atual* e *novo nome*. Como tal, é necessário "apagar" o ficheiro da diretoria e voltar a inseri-la (o *inumber* mantém-se). 
+Para tal, é necessário verificar se o ficheiro com *nome atual* existe e se não existe já nenhum ficheiro com o nome *novo nome* no fs (em caso de erro, cancelar a operação e não devolver erro).
+> temos que verificar se o *novo nome* já existe antes de remover o *nome atual* da diretoria
 
+Esta operação é suportada pelo comando 'r'
+
+        r f1 f2 
+
+Sendo *f1* o *nome atual* e *f2* o *novo nome*
+
+#### Shell script
+Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do TecnicoFS.
 ---
 ## Exercício 3
 
