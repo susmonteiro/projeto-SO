@@ -53,7 +53,7 @@ clean_ofiles:
 
 clean:
 	@echo Cleaning...
-	rm -f lib/*.o *.o tecnicofs*
+	rm -f lib/*.o *.o tecnicofs* out*
 
 run: 
 	make
