@@ -9,14 +9,17 @@
 #include "locks.h"
 
 
+
 #define MAX_COMMANDS 150000
 #define MAX_INPUT_SIZE 100
 #define MILLION 1000000
-#define N_ARGC 4
+#define N_ARGC 5
 
 
 int numberThreads = 0;
-tecnicofs* fs;
+int numberBuckets = 1;
+int nextINumber = 0;
+tecnicofs* hash_tab;
 pthread_mutex_t mutex_rm;   // bloqueio para removeCommand()
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE]; //array de comandos
@@ -32,7 +35,11 @@ static void parseArgs (long argc, char* const argv[]){
     if (argc != N_ARGC) {
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
+    } else {
+        numberThreads = atoi(argv[3]);
+        numberBuckets = atoi(argv[4]);
     }
+
 }
 
 int insertCommand(char* data) {
@@ -121,7 +128,7 @@ void applyCommands(){
         /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
         para que o mesmo ficheiro tenha sempre o mesmo inumber associado independentemente da ordem de execucao */
         if(command[0] == 'c')
-            iNumber = obtainNewInumber(fs); //obter novo inumber (sequencial)
+            iNumber = ++nextINumber; //obter novo inumber (sequencial)
         wOpened_rc(&mutex_rm);
 
         char token;
@@ -132,7 +139,9 @@ void applyCommands(){
             exit(EXIT_FAILURE);
         }
 
+
         int searchResult;
+        tecnicofs fs = hash_tab[searchHash(name, numberBuckets)];
         switch (token) {
             case 'c':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
@@ -170,7 +179,7 @@ void print_tree_outfile(const char *pwd) {
         return;
     }
 
-    print_tecnicofs_tree(fpout, fs); //imprimir a arvore
+    print_HashTab_tree(fpout, hash_tab, numberBuckets); //imprimir a arvore
     fclose(fpout);
 }
 
@@ -207,36 +216,37 @@ void threads_init() {
         }
     }
 
-    if(gettimeofday(&end, NULL))    errnoPrint(); //erro
+    if(gettimeofday(&end, NULL)) errnoPrint(); //erro
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 }
 
 /* Define o numero de tarefas que vao ser criadas na pool, [threads_init()]
    Numero de threads e' uma variavel global */
-void startCommands(const char* nThreads){
+void startCommands() {
     #if defined(MUTEX) || defined(RWLOCK)
-        if((numberThreads = atoi(nThreads)) < 1) {
+        if(numberThreads < 1) {
             fprintf(stderr, "Error: number of threads invalid.\n");
             exit(EXIT_FAILURE); 
         }
     #else   //para versao nosync (sem threads)
-        if(atoi(nThreads) != 1) {
+        if(numberThreads != 1) {
             fprintf(stderr, "Error: number of threads invalid.\n");
             exit(EXIT_FAILURE); 
         }
         numberThreads = 1; // variavel global
     #endif
+
     threads_init(); // inicia pool de tarefas
 }
 
 int main(int argc, char* argv[]) {
     parseArgs(argc, argv);  // verifica numero de argumentos
     
-    fs = new_tecnicofs();           // cria o fs (vazio)
+    hash_tab = new_tecnicofs(numberBuckets);           // cria o fs (vazio)
     processInput(argv[1]);          // carrega o vetor global com comandos
-    startCommands(argv[3]);         // inicializa as tarefas e chama a funcao applyCommands()
+    startCommands();         // inicializa as tarefas e chama a funcao applyCommands()
     print_tree_outfile(argv[2]);    // imprime o conteudo final da fs para o ficheiro de saida
     
-    free_tecnicofs(fs);
+    free_hashTab(hash_tab, numberBuckets);
     exit(EXIT_SUCCESS);
 }

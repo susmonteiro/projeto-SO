@@ -33,7 +33,7 @@ void wOpened_rc(pthread_mutex_t *mutex) {
 
 
 /* Fecha o write_lock dos comandos que editam a arvore */
-void wClosed(tecnicofs *fs) {
+void wClosed(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_lock(&fs->mutex_ap));
     #elif RWLOCK
@@ -42,7 +42,7 @@ void wClosed(tecnicofs *fs) {
 }
 
 /* Fecha o read_lock do comando l*/
-void rClosed(tecnicofs *fs) {
+void rClosed(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_lock(&fs->mutex_ap));
     #elif RWLOCK
@@ -51,7 +51,7 @@ void rClosed(tecnicofs *fs) {
 }
 
 /* Abre o write_lock dos comandos que editam a arvore */
-void wOpened(tecnicofs *fs) {
+void wOpened(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
     #elif RWLOCK
@@ -60,7 +60,7 @@ void wOpened(tecnicofs *fs) {
 }
 
 /* Abre o read_lock do comando l*/
-void rOpened(tecnicofs *fs) {
+void rOpened(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
     #elif RWLOCK
