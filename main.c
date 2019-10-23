@@ -36,7 +36,7 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     } else {
-        numberThreads = atoi(argv[3]);
+        numberThreads = atoi(argv[3]); //testar erro
         numberBuckets = atoi(argv[4]);
     }
 
