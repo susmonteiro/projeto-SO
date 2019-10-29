@@ -4,7 +4,7 @@
 CC   = gcc
 LD   = gcc
 CFLAGS =-Wall -std=gnu99 -I../
-LDFLAGS=-lm -lpthread
+LDFLAGS=-lm -pthread
 
 
 #Flag adicional que muda conforme a implementacao
@@ -20,16 +20,16 @@ all:
 	make tecnicofs-rwlock 
 
 #tecnicofs-nosync: ADDICFLAGS = 	(REDUNDANTE)
-tecnicofs-nosync: clean_ofiles lib/bst.o lib/hash.o fs.o locks.o main.o
-	$(LD) $(CFLAGS) -o tecnicofs-nosync lib/bst.o lib/hash.o fs.o locks.o main.o $(LDFLAGS) 
+tecnicofs-nosync: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o lib/hash.o fs.o sync.o main.o
 
 tecnicofs-mutex: ADDICFLAGS = -DMUTEX 
-tecnicofs-mutex: clean_ofiles lib/bst.o lib/hash.o fs.o locks.o main.o
-	$(LD) $(CFLAGS) -o tecnicofs-mutex lib/bst.o lib/hash.o fs.o locks.o main.o $(LDFLAGS) 
+tecnicofs-mutex: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-mutex lib/bst.o lib/hash.o fs.o sync.o main.o
 
 tecnicofs-rwlock: ADDICFLAGS = -DRWLOCK 
-tecnicofs-rwlock: clean_ofiles lib/bst.o lib/hash.o fs.o locks.o main.o
-	$(LD) $(CFLAGS) -o tecnicofs-rwlock lib/bst.o lib/hash.o fs.o locks.o main.o $(LDFLAGS)  
+tecnicofs-rwlock: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
+	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-rwlock lib/bst.o lib/hash.o fs.o sync.o main.o   
 
 lib/bst.o: lib/bst.c lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o lib/bst.o -c lib/bst.c
@@ -40,8 +40,8 @@ lib/hash.o: lib/hash.c lib/hash.h
 fs.o: fs.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o fs.o -c fs.c
 
-locks.o: locks.c locks.h fs.h 
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o locks.o -c locks.c
+sync.o: sync.c sync.h fs.h 
+	$(CC) $(CFLAGS) $(ADDICFLAGS) -o sync.o -c sync.c
 
 main.o: main.c fs.h lib/bst.h
 	$(CC) $(CFLAGS) $(ADDICFLAGS) -o main.o -c main.c

@@ -6,21 +6,26 @@
 #include <errno.h>
 #include <sys/time.h>
 #include "fs.h"
-#include "locks.h"
+#include "sync.h"
 
 
 
-#define MAX_COMMANDS 150000
+#define MAX_COMMANDS 10 //vetor de comandos tem no maximo 10 comandos num determinado momento
+#define INITVAL_COMMAND_READER 0 //inicialmente o vetor de comandos esta vazio logo nao ha comandos para consumir0 
 #define MAX_INPUT_SIZE 100
 #define MILLION 1000000
 #define N_ARGC 5
-
 
 int numberThreads = 0;
 int numberBuckets = 1;
 int nextINumber = 0;
 tecnicofs* hash_tab;
-pthread_mutex_t mutex_rm;   // bloqueio para removeCommand()
+pthread_mutex_t mutex_rm;   //bloqueio para removeCommand()
+sem_t sem_prod, sem_cons;   //semaforo para controlo do vetor comandos
+int index_prod = 0;
+int index_cons = 0;
+pthread_t *tid;
+
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE]; //array de comandos
 int numberCommands = 0; //numero de comandos no array
@@ -72,6 +77,12 @@ void errnoPrint(){
     fprintf(stderr, "Error: %s\n", strerror(errno));
     exit(EXIT_FAILURE);
 }
+
+void initSemaforos(int initVal1, int initVal2){
+    if(cria_semaforo(&sem_cons,initVal1) != 0) errnoPrint();
+    if(cria_semaforo(&sem_prod,initVal2) != 0) errnoPrint();
+}
+
 
 void processInput(const char *pwd){
     char line[MAX_INPUT_SIZE];
@@ -195,30 +206,28 @@ float time_taken(struct timeval start, struct timeval end) {
 
 /* Inicializa a pool de tarefas que chamam a funcao applyCommands()
    Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
-void threads_init() {
+void threads_init(const char *pwd) {
     struct timeval start, end; //tempo
-    int i;
-    pthread_t tid[numberThreads]; // lista das tarefas
+    tid = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads+1));
 
     if(gettimeofday(&start, NULL))  errnoPrint(); //erro
 
-    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
-        if (pthread_create(&tid[i], NULL, (void *)applyCommands, NULL)) {
-            fprintf(stderr, "Error: not able to create thread.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas
-        if (pthread_join (tid[i], NULL)) {
-            fprintf(stderr, "Error: not able to terminate thread.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
+    startInput(pwd);
+    startCommands();
+    joinAllThreads();
+    
 
     if(gettimeofday(&end, NULL)) errnoPrint(); //erro
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 }
+
+void startInput(const char *pwd) {
+    if (pthread_create(&tid[0], NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
+        fprintf(stderr, "Error: not able to create thread.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
 
 /* Define o numero de tarefas que vao ser criadas na pool, [threads_init()]
    Numero de threads e' uma variavel global */
@@ -236,15 +245,38 @@ void startCommands() {
         numberThreads = 1; // variavel global
     #endif
 
-    threads_init(); // inicia pool de tarefas
+    commands_threads_init(); // inicia pool de tarefas
 }
+
+void commands_threads_init(){
+    int i;
+    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
+        if (pthread_create(&tid[i+1], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
+            fprintf(stderr, "Error: not able to create thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+}
+
+void joinAllThreads(){
+    int i;
+    for (i = 0; i < numberThreads + 1; i++){ //terminar todas as tarefas
+        if (pthread_join (tid[i], NULL)) {
+            fprintf(stderr, "Error: not able to terminate thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
 
 int main(int argc, char* argv[]) {
     parseArgs(argc, argv);  // verifica numero de argumentos
-    
+
     hash_tab = new_tecnicofs(numberBuckets);           // cria o fs (vazio)
-    processInput(argv[1]);          // carrega o vetor global com comandos
-    startCommands();         // inicializa as tarefas e chama a funcao applyCommands()
+    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER);
+    
+    threads_init(argv[1]);             // inicializa as tarefas e chama a funcao applyCommands()
     print_tree_outfile(argv[2]);    // imprime o conteudo final da fs para o ficheiro de saida
     
     free_hashTab(hash_tab, numberBuckets);
