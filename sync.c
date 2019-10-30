@@ -17,6 +17,13 @@ void erroCheck(int returnval){
         exit(EXIT_FAILURE);
     }
 }
+
+/* funcao que imprime erro em funcoes que tenham errno definido */
+void errnoPrint(){
+    fprintf(stderr, "Error: %s\n", strerror(errno));
+    exit(EXIT_FAILURE);
+}
+
 /* Fecha o write_lock do acesso ao vetor de comandos */ 
 void wClosed_rc(pthread_mutex_t *mutex) {
     #if defined(MUTEX) || defined(RWLOCK)
@@ -68,6 +75,14 @@ void rOpened(tecnicofs fs) {
     #endif
 }
 
-int cria_semaforo(sem_t *sem, int initVal){
-    return sem_init(sem, 0, initVal);
+void cria_semaforo(sem_t *sem, int initVal){
+    if (sem_init(sem, 0, initVal)) errnoPrint();
+}
+
+void esperar(sem_t *sem) {
+    if (sem_wait(sem)) errnoPrint();
+}
+
+void assinalar(sem_t *sem) {
+    if (sem_post(sem)) errnoPrint();
 }
