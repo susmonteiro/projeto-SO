@@ -3,7 +3,6 @@
 #include <getopt.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
 #include <sys/time.h>
 #include "fs.h"
 #include "sync.h"
@@ -24,7 +23,8 @@ pthread_mutex_t mutex_rm;   //bloqueio para removeCommand()
 sem_t sem_prod, sem_cons;   //semaforo para controlo do vetor comandos
 int index_prod = 0;
 int index_cons = 0;
-pthread_t *tid;
+pthread_t *tid_cons;
+pthread_t tid_prod;
 
 
 char inputCommands[MAX_COMMANDS][MAX_INPUT_SIZE]; //array de comandos
@@ -47,13 +47,10 @@ static void parseArgs (long argc, char* const argv[]){
 
 }
 
-int insertCommand(char* data) {
-    if(numberCommands != MAX_COMMANDS) { //verifica o maximo
-        strcpy(inputCommands[numberCommands++], data); 
-        //passa para array e incrementa global var numberCommands
-        return 1;
-    }
-    return 0;
+void insertCommand(char* data) {
+    esperar(sem_prod);
+    strcpy(inputCommands[numberCommands++], data); 
+    assinalar(sem_cons);
 }
 
 char* removeCommand() {
@@ -72,15 +69,11 @@ void errorParse(){
     exit(EXIT_FAILURE);
 }
 
-/* funcao que imprime erro em funcoes que tenham errno definido */
-void errnoPrint(){
-    fprintf(stderr, "Error: %s\n", strerror(errno));
-    exit(EXIT_FAILURE);
-}
+
 
 void initSemaforos(int initVal1, int initVal2){
-    if(cria_semaforo(&sem_cons,initVal1) != 0) errnoPrint();
-    if(cria_semaforo(&sem_prod,initVal2) != 0) errnoPrint();
+    cria_semaforo(&sem_cons,initVal1) != 0);
+    cria_semaforo(&sem_prod,initVal2) != 0);
 }
 
 
@@ -107,10 +100,8 @@ void processInput(const char *pwd){
             case 'd':
                 if(numTokens != 2)
                     errorParse();
-                if(insertCommand(line))  
-                /* se for comando valido, insere o comando no vetor de comandos */
-                    break;
-                return;
+                insertCommand(line);
+                break;
             case '#':
                 break; /* se for um comentario, ignora essa linha */
             default: { /* error */
@@ -123,17 +114,22 @@ void processInput(const char *pwd){
         fprintf(stderr, "Error: file not closed.\n");
         exit(EXIT_FAILURE);
     }
+
+    //pthread exit????
+
 }
 
 
 void applyCommands(){
-    while(numberCommands > 0){ //enquanto houver comando
+    while(1) { //enquanto houver comando
         int iNumber;
 
+        esperar(sem_cons);
         wClosed_rc(&mutex_rm); // impede acessos simultaneos ao vetor de comandos
         const char* command = removeCommand(); //pop do comando
         if (command == NULL){ //salvaguarda
             wOpened_rc(&mutex_rm);
+            abrir(sem_prod);
             continue; //nova iteracao do while
         }
         /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
@@ -141,6 +137,7 @@ void applyCommands(){
         if(command[0] == 'c')
             iNumber = ++nextINumber; //obter novo inumber (sequencial)
         wOpened_rc(&mutex_rm);
+        abrir(sem_prod);
 
         char token;
         char name[MAX_INPUT_SIZE];
@@ -179,6 +176,8 @@ void applyCommands(){
             }
         }
     }
+
+    //pthread exit????
 }
 
 /* Abre o ficheiro de output e escreve neste a arvore */
@@ -208,7 +207,7 @@ float time_taken(struct timeval start, struct timeval end) {
    Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
 void threads_init(const char *pwd) {
     struct timeval start, end; //tempo
-    tid = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads+1));
+    tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
 
     if(gettimeofday(&start, NULL))  errnoPrint(); //erro
 
@@ -222,7 +221,7 @@ void threads_init(const char *pwd) {
 }
 
 void startInput(const char *pwd) {
-    if (pthread_create(&tid[0], NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
+    if (pthread_create(tid_prod, NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
         fprintf(stderr, "Error: not able to create thread.\n");
         exit(EXIT_FAILURE);
     }
@@ -251,7 +250,7 @@ void startCommands() {
 void commands_threads_init(){
     int i;
     for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
-        if (pthread_create(&tid[i+1], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
+        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
             fprintf(stderr, "Error: not able to create thread.\n");
             exit(EXIT_FAILURE);
         }
@@ -261,8 +260,12 @@ void commands_threads_init(){
 
 void joinAllThreads(){
     int i;
-    for (i = 0; i < numberThreads + 1; i++){ //terminar todas as tarefas
-        if (pthread_join (tid[i], NULL)) {
+    pthread_join (tid_prod, NULL){ // mata produtora)
+        fprintf(stderr, "Error: not able to terminate thread.\n");
+        exit(EXIT_FAILURE);
+    } 
+    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas
+        if (pthread_join (tid_cons[i], NULL)) {
             fprintf(stderr, "Error: not able to terminate thread.\n");
             exit(EXIT_FAILURE);
         }
