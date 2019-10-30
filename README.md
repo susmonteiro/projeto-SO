@@ -129,3 +129,20 @@ Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do
 
 ---
 ## Perguntitas
+
+* fazer numthreads = numthreads + 1 (thread produtora) ???? 
+* vamos tornar o pwd global?? inputfile
+
+
+* init mutex, rw e sem
+* destroy mutex, rw e sem
+  
+---
+### Solucao wait infinito produtor-consumidor
+
+* Quando acabar a leitura do ficheiro (no final)
+* Acrescentar um comando de exit das threads
+* Uma thread ira ler este comando
+  * Vai voltar a escrever o comando (atencao a exclusao mutua)
+  * exit_thread
+* 
