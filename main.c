@@ -48,9 +48,11 @@ static void parseArgs (long argc, char* const argv[]){
 }
 
 void insertCommand(char* data) {
-    esperar(sem_prod);
+    esperar(&sem_prod);
+    wClosed_rc(&mutex_rm);
     strcpy(inputCommands[numberCommands++], data); 
-    assinalar(sem_cons);
+    wOpened_rc(&mutex_rm);
+    assinalar(&sem_cons);
 }
 
 char* removeCommand() {
@@ -124,12 +126,21 @@ void applyCommands(){
     while(1) { //enquanto houver comando
         int iNumber;
 
-        esperar(sem_cons);
+        esperar(&sem_cons);
         wClosed_rc(&mutex_rm); // impede acessos simultaneos ao vetor de comandos
+        
+
+
+
+        //AGORA PODEM SER ESCRITOS POR CIMA! NAO PODEMOS TER O POINTER, TEMOS QUE TER O COMANDO EM SI
+
+
+
+
         const char* command = removeCommand(); //pop do comando
         if (command == NULL){ //salvaguarda
             wOpened_rc(&mutex_rm);
-            abrir(sem_prod);
+            abrir(&sem_prod);
             continue; //nova iteracao do while
         }
         /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
@@ -137,7 +148,7 @@ void applyCommands(){
         if(command[0] == 'c')
             iNumber = ++nextINumber; //obter novo inumber (sequencial)
         wOpened_rc(&mutex_rm);
-        abrir(sem_prod);
+        abrir(&sem_prod);
 
         char token;
         char name[MAX_INPUT_SIZE];
