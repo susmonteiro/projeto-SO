@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <string.h>
 #include <ctype.h>
 #include <sys/time.h>
 #include "fs.h"
@@ -14,6 +13,7 @@
 #define MAX_INPUT_SIZE 100
 #define MILLION 1000000
 #define N_ARGC 5
+#define COMMAND_NULL -1
 
 int numberThreads = 0;
 int numberBuckets = 1;
@@ -50,20 +50,39 @@ static void parseArgs (long argc, char* const argv[]){
 void insertCommand(char* data) {
     esperar(&sem_prod);
     wClosed_rc(&mutex_rm);
-    strcpy(inputCommands[numberCommands++], data); 
+    strcpy(inputCommands[index_prod], data); 
+    index_prod = (index_prod + 1) % MAX_COMMANDS;
+
+    numberCommands++; //APAGAAAAAAAR????????
+
     wOpened_rc(&mutex_rm);
     assinalar(&sem_cons);
 }
 
-char* removeCommand() {
+int removeCommand(char *command) {
     // pop do comando
-    if((numberCommands + 1)){ //o primeiro comando e de indice 0
-        if(numberCommands > 0){
-            numberCommands--;
-            return inputCommands[headQueue++];  //incrementa o indice
-        }
-    }
-    return NULL;
+    int iNumber = 0;
+    esperar(&sem_cons);
+    wClosed_rc(&mutex_rm); // impede acessos simultaneos ao vetor de comandos
+        
+    strcpy(command, inputCommands[index_cons]);  //incrementa o indice
+    index_cons = (index_cons + 1) % MAX_COMMANDS;
+    printf("%s\n", command);
+    printf("%d", index_cons);
+
+
+    if (command == NULL)    //salvaguarda
+        iNumber = COMMAND_NULL; //nova iteracao do while
+
+    if(command[0] == 'c')
+        iNumber = ++nextINumber; //obter novo inumber (sequencial)
+
+        
+    wOpened_rc(&mutex_rm);
+    assinalar(&sem_prod);
+
+    return iNumber;
+        
 }
 
 void errorParse(){
@@ -74,8 +93,8 @@ void errorParse(){
 
 
 void initSemaforos(int initVal1, int initVal2){
-    cria_semaforo(&sem_cons,initVal1) != 0);
-    cria_semaforo(&sem_prod,initVal2) != 0);
+    cria_semaforo(&sem_cons,initVal1);
+    cria_semaforo(&sem_prod,initVal2);
 }
 
 
@@ -125,34 +144,26 @@ void processInput(const char *pwd){
 void applyCommands(){
     while(1) { //enquanto houver comando
         int iNumber;
+        char command[MAX_INPUT_SIZE];
 
-        esperar(&sem_cons);
-        wClosed_rc(&mutex_rm); // impede acessos simultaneos ao vetor de comandos
-        
-
-
-
-        //AGORA PODEM SER ESCRITOS POR CIMA! NAO PODEMOS TER O POINTER, TEMOS QUE TER O COMANDO EM SI
-
-
-
-
-        const char* command = removeCommand(); //pop do comando
-        if (command == NULL){ //salvaguarda
-            wOpened_rc(&mutex_rm);
-            abrir(&sem_prod);
-            continue; //nova iteracao do while
-        }
-        /* com base nas duvidas do piazza, caso o atual comando seja 'c' (create), e' necessario atribuir imediatamente um inumber 
-        para que o mesmo ficheiro tenha sempre o mesmo inumber associado independentemente da ordem de execucao */
-        if(command[0] == 'c')
-            iNumber = ++nextINumber; //obter novo inumber (sequencial)
-        wOpened_rc(&mutex_rm);
-        abrir(&sem_prod);
+        iNumber = removeCommand(command); //pop do comando
+        if (iNumber == COMMAND_NULL) continue;
 
         char token;
         char name[MAX_INPUT_SIZE];
+
+        printf("%s", command);
+
+        // SSCANF PRECISA DE CONST?
+        //const char* command2 =
         int numTokens = sscanf(command, "%c %s", &token, name); //scanf formatado "comando nome"
+
+        puts("...");
+        printf("%c", token);
+        printf("%s", name);
+
+
+
         if (numTokens != 2) { //todos os comandos levam 1 input
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
@@ -214,30 +225,23 @@ float time_taken(struct timeval start, struct timeval end) {
     return secs + microseconds;
 }
 
-/* Inicializa a pool de tarefas que chamam a funcao applyCommands()
-   Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
-void threads_init(const char *pwd) {
-    struct timeval start, end; //tempo
-    tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
-
-    if(gettimeofday(&start, NULL))  errnoPrint(); //erro
-
-    startInput(pwd);
-    startCommands();
-    joinAllThreads();
-    
-
-    if(gettimeofday(&end, NULL)) errnoPrint(); //erro
-    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
-}
-
-void startInput(const char *pwd) {
-    if (pthread_create(tid_prod, NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
+void startInput(char *pwd) {
+    if (pthread_create(&tid_prod, NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
         fprintf(stderr, "Error: not able to create thread.\n");
         exit(EXIT_FAILURE);
     }
 }
 
+void commands_threads_init(){
+    int i;
+    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
+        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
+            fprintf(stderr, "Error: not able to create thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+}
 
 /* Define o numero de tarefas que vao ser criadas na pool, [threads_init()]
    Numero de threads e' uma variavel global */
@@ -258,20 +262,11 @@ void startCommands() {
     commands_threads_init(); // inicia pool de tarefas
 }
 
-void commands_threads_init(){
-    int i;
-    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
-        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
-            fprintf(stderr, "Error: not able to create thread.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
 
-}
 
 void joinAllThreads(){
     int i;
-    pthread_join (tid_prod, NULL){ // mata produtora)
+    if (pthread_join(tid_prod, NULL)){ // mata produtora)
         fprintf(stderr, "Error: not able to terminate thread.\n");
         exit(EXIT_FAILURE);
     } 
@@ -284,14 +279,33 @@ void joinAllThreads(){
 }
 
 
-int main(int argc, char* argv[]) {
-    parseArgs(argc, argv);  // verifica numero de argumentos
+/* Inicializa a pool de tarefas que chamam a funcao applyCommands()
+   Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
+void threads_init(char *pwd) {
+    struct timeval start, end; //tempo
+    tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
 
-    hash_tab = new_tecnicofs(numberBuckets);           // cria o fs (vazio)
+    if(gettimeofday(&start, NULL))  errnoPrint(); //erro
+
+    startInput(pwd);
+    startCommands();
+    joinAllThreads();
+    
+
+    if(gettimeofday(&end, NULL)) errnoPrint(); //erro
+    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
+}
+
+
+
+int main(int argc, char* argv[]) {
+    parseArgs(argc, argv);                                  // verifica numero de argumentos
+
+    hash_tab = new_tecnicofs(numberBuckets);                // cria o fs (vazio)
     initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER);
     
-    threads_init(argv[1]);             // inicializa as tarefas e chama a funcao applyCommands()
-    print_tree_outfile(argv[2]);    // imprime o conteudo final da fs para o ficheiro de saida
+    threads_init(argv[1]);                                  // inicializa as tarefas e chama a funcao applyCommands()
+    print_tree_outfile(argv[2]);                            // imprime o conteudo final da fs para o ficheiro de saida
     
     free_hashTab(hash_tab, numberBuckets);
     exit(EXIT_SUCCESS);

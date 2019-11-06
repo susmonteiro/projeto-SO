@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <semaphore.h> 
 #include <errno.h>
+#include <string.h>
 #include "fs.h"
 
 void erroCheck(int returnval);
