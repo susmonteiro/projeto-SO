@@ -17,12 +17,12 @@ typedef struct tecnicofs {
 
 //int obtainNewInumber(int *nextINumber);
 tecnicofs* new_tecnicofs(int size);
-void free_hashTab(tecnicofs* hashtab, int size);
+void free_hashTab(tecnicofs* hashTab, int size);
 void free_tecnicofs(tecnicofs fs);
 void create(tecnicofs fs, char *name, int inumber);
 void delete(tecnicofs fs, char *name);
 int lookup(tecnicofs fs, char *name);
-void print_HashTab_tree(FILE * fp, tecnicofs* hashtab, int size);
+void print_HashTab_tree(FILE * fp, tecnicofs* hashTab, int size);
 void print_tecnicofs_tree(FILE * fp, tecnicofs fs);
 int searchHash(char *name, int size);
 

@@ -24,6 +24,39 @@ void errnoPrint(){
     exit(EXIT_FAILURE);
 }
 
+void initMutex(pthread_mutex_t *mutex) {
+    pthread_mutex_init(mutex, NULL);
+}
+
+void destroyMutex(pthread_mutex_t *mutex) {
+    pthread_mutex_destroy(mutex);
+}
+
+void initRWLock(pthread_rwlock_t *rwlock) {
+    pthread_rwlock_init(rwlock, NULL);
+    
+}
+
+void destroyRWLock(pthread_rwlock_t *rwlock) {
+    pthread_rwlock_destroy(rwlock);
+}
+
+void initLock(tecnicofs fs){
+    #ifdef MUTEX
+        initMutex(fs->mutex_ap);  //ERROOOOOOOOOOOOOOOO
+    #elif RWLOCK
+        initRWLock(fs->rwlock);
+    #endif
+}
+
+void destroyLock(tecnicofs fs) {
+    #ifdef MUTEX
+        destroyMutex(fs->mutex_ap);
+    #elif RWLOCK
+        destroyRWLock(fs->rwlock);
+    #endif
+}
+
 /* Fecha o write_lock do acesso ao vetor de comandos */ 
 void wClosed_rc(pthread_mutex_t *mutex) {
     #if defined(MUTEX) || defined(RWLOCK)

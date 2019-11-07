@@ -14,6 +14,9 @@
 #define MILLION 1000000
 #define N_ARGC 5
 #define COMMAND_NULL -1
+#define END_COMMAND "x x"
+#define END_CHAR 'x'
+
 
 int numberThreads = 0;
 int numberBuckets = 1;
@@ -67,9 +70,6 @@ int removeCommand(char *command) {
         
     strcpy(command, inputCommands[index_cons]);  //incrementa o indice
     index_cons = (index_cons + 1) % MAX_COMMANDS;
-    printf("%s\n", command);
-    printf("%d", index_cons);
-
 
     if (command == NULL)    //salvaguarda
         iNumber = COMMAND_NULL; //nova iteracao do while
@@ -93,10 +93,13 @@ void errorParse(){
 
 
 void initSemaforos(int initVal1, int initVal2){
-    cria_semaforo(&sem_cons,initVal1);
-    cria_semaforo(&sem_prod,initVal2);
+    cria_semaforo(&sem_prod,initVal1);
+    cria_semaforo(&sem_cons,initVal2);
 }
 
+void pushEndCommand(){
+    insertCommand(END_COMMAND);
+}
 
 void processInput(const char *pwd){
     char line[MAX_INPUT_SIZE];
@@ -136,8 +139,7 @@ void processInput(const char *pwd){
         exit(EXIT_FAILURE);
     }
 
-    //pthread exit????
-
+    pushEndCommand(); //acrescenta um ultimo comando ao vetor (exit)
 }
 
 
@@ -152,15 +154,9 @@ void applyCommands(){
         char token;
         char name[MAX_INPUT_SIZE];
 
-        printf("%s", command);
-
         // SSCANF PRECISA DE CONST?
         //const char* command2 =
         int numTokens = sscanf(command, "%c %s", &token, name); //scanf formatado "comando nome"
-
-        puts("...");
-        printf("%c", token);
-        printf("%s", name);
 
 
 
@@ -192,14 +188,15 @@ void applyCommands(){
                 delete(fs, name); 
                 wOpened(fs);
                 break;
+            case END_CHAR:
+                pushEndCommand();
+                return;
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);
             }
         }
     }
-
-    //pthread exit????
 }
 
 /* Abre o ficheiro de output e escreve neste a arvore */
@@ -234,8 +231,8 @@ void startInput(char *pwd) {
 
 void commands_threads_init(){
     int i;
-    for (i = 0; i < numberThreads; i++) { // inicializar n tarefas, com applyCommands()
-        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { //"+1" a thread[0] e' a produtora
+    for (i = 0; i < numberThreads; i++) { // inicializar numberThreads tarefas, com applyCommands()
+        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { 
             fprintf(stderr, "Error: not able to create thread.\n");
             exit(EXIT_FAILURE);
         }
@@ -294,6 +291,8 @@ void threads_init(char *pwd) {
 
     if(gettimeofday(&end, NULL)) errnoPrint(); //erro
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
+
+    free(tid_cons);
 }
 
 

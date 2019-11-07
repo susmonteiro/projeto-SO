@@ -14,23 +14,28 @@ tecnicofs* new_tecnicofs(int size){
     // cria o root do filesystem
 	int i = 0;
 
-	tecnicofs* hash_tab = (tecnicofs*)malloc(size * sizeof(tecnicofs));
+	tecnicofs* hashTab = (tecnicofs*)malloc(size * sizeof(tecnicofs));
 	for(i = 0; i < size; i++) {
-		hash_tab[i] = malloc(sizeof(struct tecnicofs));
-		if (!hash_tab[i]) {
+
+		hashTab[i] = malloc(sizeof(struct tecnicofs));
+		if (!hashTab[i]) {
 			perror("failed to allocate tecnicofs");
 			exit(EXIT_FAILURE);
 		}
-		hash_tab[i]->bstRoot = NULL;
+
+		initLock(hashTab[i]);
+		hashTab[i]->bstRoot = NULL;
 	}
 	
-	return hash_tab;
+	return hashTab;
 }
 
-void free_hashTab(tecnicofs* hashtab, int size){
+void free_hashTab(tecnicofs* hashTab, int size){
 	int i;
-	for(i = 0; i < size; i++) free_tecnicofs(hashtab[i]);
-	free(hashtab);
+	for(i = 0; i < size; i++) {
+		destroyLock(hashTab[i]);
+		free_tecnicofs(hashTab[i]);
+	free(hashTab);
 }
 
 void free_tecnicofs(tecnicofs fs){
@@ -52,9 +57,9 @@ int lookup(tecnicofs fs, char *name){
 	return 0;
 }
 
-void print_HashTab_tree(FILE * fp, tecnicofs* hashtab, int size){
+void print_hashTab_tree(FILE * fp, tecnicofs* hashTab, int size){
 	int i;
-	for(i = 0; i < size; i++) print_tecnicofs_tree(fp, hashtab[i]);
+	for(i = 0; i < size; i++) print_tecnicofs_tree(fp, hashTab[i]);
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs fs){
