@@ -25,5 +25,11 @@ int lookup(tecnicofs fs, char *name);
 void print_HashTab_tree(FILE * fp, tecnicofs* hashTab, int size);
 void print_tecnicofs_tree(FILE * fp, tecnicofs fs);
 int searchHash(char *name, int size);
+void initMutex(pthread_mutex_t *mutex);
+void destroyMutex(pthread_mutex_t *mutex);
+void initRWLock(pthread_rwlock_t *rwlock);
+void destroyRWLock(pthread_rwlock_t *rwlock);
+void initLock(tecnicofs fs);
+void destroyLock(tecnicofs fs);
 
 #endif /* FS_H */

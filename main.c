@@ -281,6 +281,7 @@ void joinAllThreads(){
 void threads_init(char *pwd) {
     struct timeval start, end; //tempo
     tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
+    initMutex(&mutex_rm);
 
     if(gettimeofday(&start, NULL))  errnoPrint(); //erro
 
@@ -292,6 +293,7 @@ void threads_init(char *pwd) {
     if(gettimeofday(&end, NULL)) errnoPrint(); //erro
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 
+    destroyMutex(&mutex_rm);
     free(tid_cons);
 }
 
