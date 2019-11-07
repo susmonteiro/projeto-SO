@@ -152,40 +152,37 @@ void applyCommands(){
         if (iNumber == COMMAND_NULL) continue;
 
         char token;
-        char name[MAX_INPUT_SIZE];
+        char name1[MAX_INPUT_SIZE];
+        // char name2[MAX_INPUT_SIZE];
 
-        // SSCANF PRECISA DE CONST?
-        //const char* command2 =
-        int numTokens = sscanf(command, "%c %s", &token, name); //scanf formatado "comando nome"
-
-
-
-        if (numTokens != 2) { //todos os comandos levam 1 input
+        int numTokens = sscanf(command, "%c %s", &token, name1); //scanf formatado "comando nome"
+        
+        if (numTokens != 2) { 
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
 
 
         int searchResult;
-        tecnicofs fs = hash_tab[searchHash(name, numberBuckets)];
+        tecnicofs fs = hash_tab[searchHash(name1, numberBuckets)];
         switch (token) {
             case 'c':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
-                create(fs, name, iNumber);
+                create(fs, name1, iNumber);
                 wOpened(fs);
                 break;
             case 'l':
                 rClosed(fs);    // permite leituras simultaneas, impede escrita
-                searchResult = lookup(fs, name); //procura por nome, devolve inumber
+                searchResult = lookup(fs, name1); //procura por nome, devolve inumber
                 rOpened(fs);
                 if(!searchResult)
-                    printf("%s not found\n", name);
+                    printf("%s not found\n", name1);
                 else
-                    printf("%s found with inumber %d\n", name, searchResult);
+                    printf("%s found with inumber %d\n", name1, searchResult);
                 break;
             case 'd':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
-                delete(fs, name); 
+                delete(fs, name1); 
                 wOpened(fs);
                 break;
             case END_CHAR:
