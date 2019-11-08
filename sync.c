@@ -77,6 +77,23 @@ void rOpened(tecnicofs fs) {
     #endif
 }
 
+int TryLock(tecnicofs fs) {
+    #if defined(MUTEX)
+        return pthread_mutex_trylock(&fs->mutex_ap);
+    #elif RWLOCK
+        return pthread_rwlock_trywrlock(&fs->rwlock);
+    #endif
+        return 1; // para nosync, nunca se faz o lock 
+}
+
+void Unlock(tecnicofs fs) {
+    #if defined(MUTEX)
+        pthread_mutex_unlock(&fs->mutex_ap);
+    #elif RWLOCK
+        pthread_rwlock_unlock(&fs->rwlock);
+    #endif
+}
+
 void cria_semaforo(sem_t *sem, int initVal){
     if (sem_init(sem, 0, initVal)) errnoPrint();
 }

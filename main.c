@@ -14,9 +14,7 @@
 #define MILLION 1000000
 #define N_ARGC 5
 #define COMMAND_NULL -1
-#define END_COMMAND "x x"
-#define END_CHAR 'x'
-
+#define END_COMMAND 'x'
 
 int numberThreads = 0;
 int numberBuckets = 1;
@@ -98,7 +96,8 @@ void initSemaforos(int initVal1, int initVal2){
 }
 
 void pushEndCommand(){
-    insertCommand(END_COMMAND);
+    char endCommand[2] = {END_COMMAND, '\0'};
+    insertCommand(endCommand);
 }
 
 void processInput(const char *pwd){
@@ -110,9 +109,10 @@ void processInput(const char *pwd){
     
     while (fgets(line, sizeof(line)/sizeof(char), fp)){
         char token;
-        char name[MAX_INPUT_SIZE];
+        char name1[MAX_INPUT_SIZE];
+        char name2[MAX_INPUT_SIZE];
 
-        int numTokens = sscanf(line, "%c %s", &token, name);
+        int numTokens = sscanf(line, "%c %s %s", &token, name1, name2);
 
         /* perform minimal validation */
         if (numTokens < 1) {
@@ -123,6 +123,11 @@ void processInput(const char *pwd){
             case 'l':
             case 'd':
                 if(numTokens != 2)
+                    errorParse();
+                insertCommand(line);
+                break;
+            case 'r':
+                if(numTokens != 3)
                     errorParse();
                 insertCommand(line);
                 break;
@@ -153,11 +158,14 @@ void applyCommands(){
 
         char token;
         char name1[MAX_INPUT_SIZE];
-        // char name2[MAX_INPUT_SIZE];
+        char name2[MAX_INPUT_SIZE];
 
-        int numTokens = sscanf(command, "%c %s", &token, name1); //scanf formatado "comando nome"
+        int numTokens = sscanf(command, "%c %s %s", &token, name1, name2); //scanf formatado "comando nome"
         
-        if (numTokens != 2) { 
+        if (numTokens > 3 || numTokens < 1) { 
+            fprintf(stderr, "Error: invalid command in Queue\n");
+            exit(EXIT_FAILURE);
+        } else if ((numTokens == 1 && token != END_COMMAND) || (numTokens == 3 && token != 'r')) {
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
@@ -165,6 +173,9 @@ void applyCommands(){
 
         int searchResult;
         tecnicofs fs = hash_tab[searchHash(name1, numberBuckets)];
+        tecnicofs fs2;
+        if (name2 != NULL) fs2 = hash_tab[searchHash(name2, numberBuckets)];
+        
         switch (token) {
             case 'c':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
@@ -185,7 +196,26 @@ void applyCommands(){
                 delete(fs, name1); 
                 wOpened(fs);
                 break;
-            case END_CHAR:
+            case 'r':
+                while (1) {
+                    if (TryLock(fs2)) {
+                        if (lookup(fs2, name2)) {
+                            // printf("%s ja existe\n", name2);
+                            Unlock(fs2);
+                            break; //se ja existir, a operacao e' cancelada sem devolver erro
+                        } else if (TryLock(fs)) {
+                            searchResult = lookup(fs, name1);
+                            delete(fs, name1);
+                            Unlock(fs);
+                            create(fs2, name2, searchResult);
+                            Unlock(fs2);
+                            break;
+                        } else 
+                            Unlock(fs2);
+                    }
+                }
+                break;
+            case END_COMMAND:
                 pushEndCommand();
                 return;
             default: { /* error */

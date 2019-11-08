@@ -10,7 +10,7 @@ typedef struct tecnicofs {
     #ifdef MUTEX
         pthread_mutex_t mutex_ap;   // bloqueio para os comandos c, l, d
     #elif RWLOCK
-        //mutex semelhante ao wrlock
+        
         pthread_rwlock_t rwlock;    // bloqueio para os comandos c, l, d
     #endif
 } *tecnicofs;
