@@ -172,9 +172,10 @@ void applyCommands(){
 
 
         int searchResult;
-        tecnicofs fs = hash_tab[searchHash(name1, numberBuckets)];
+        tecnicofs fs;
+        if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
         tecnicofs fs2;
-        if (name2 != NULL) fs2 = hash_tab[searchHash(name2, numberBuckets)];
+        if (numTokens == 3 && name2 != NULL) fs2 = hash_tab[searchHash(name2, numberBuckets)];
         
         switch (token) {
             case 'c':
@@ -204,7 +205,11 @@ void applyCommands(){
                             Unlock(fs2);
                             break; //se ja existir, a operacao e' cancelada sem devolver erro
                         } else if (TryLock(fs)) {
-                            searchResult = lookup(fs, name1);
+                            if ((searchResult = lookup(fs, name1)) == 0) {
+                                Unlock(fs);
+                                Unlock(fs2);
+                                break;
+                            }
                             delete(fs, name1);
                             Unlock(fs);
                             create(fs2, name2, searchResult);

@@ -136,10 +136,16 @@ Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do
 
 * init mutex, rw e sem
 * destroy mutex, rw e sem
+
+a1 a2 mesma arvore
+nao esquecer destroy e init sems
+hashtab e' global, no apply commands nao pode estar fora
   
 ---
 ### Solucao wait infinito produtor-consumidor
 
+---CHECK---
+---
 * Quando acabar a leitura do ficheiro (no final)
 * Acrescentar um comando de exit das threads
 * Uma thread ira ler este comando
