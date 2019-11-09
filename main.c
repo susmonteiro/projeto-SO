@@ -21,6 +21,9 @@ int numberBuckets = 1;
 int nextINumber = 0;
 tecnicofs* hash_tab;
 pthread_mutex_t mutex_rm;   //bloqueio para removeCommand()
+
+pthread_mutex_t mutex_HasTab; // lock para acessos a HashTab
+
 sem_t sem_prod, sem_cons;   //semaforo para controlo do vetor comandos
 int index_prod = 0;
 int index_cons = 0;
@@ -56,7 +59,7 @@ void insertCommand(char* data) {
 
     numberCommands++; //APAGAAAAAAAR????????
 
-    wOpened_rc(&mutex_rm);
+    wOpen_rc(&mutex_rm);
     assinalar(&sem_cons);
 }
 
@@ -76,7 +79,7 @@ int removeCommand(char *command) {
         iNumber = ++nextINumber; //obter novo inumber (sequencial)
 
         
-    wOpened_rc(&mutex_rm);
+    wOpen_rc(&mutex_rm);
     assinalar(&sem_prod);
 
     return iNumber;
@@ -173,20 +176,27 @@ void applyCommands(){
 
         int searchResult;
         tecnicofs fs;
-        if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
         tecnicofs fs2;
+
+        // wClosed_rc(&mutex_HasTab);
+        if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
         if (numTokens == 3 && name2 != NULL) fs2 = hash_tab[searchHash(name2, numberBuckets)];
-        
+        // wOpen_rc(&mutex_HasTab);
+
+
         switch (token) {
             case 'c':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
                 create(fs, name1, iNumber);
-                wOpened(fs);
+                wOpen(fs);
                 break;
             case 'l':
+
+                puts("l");
+
                 rClosed(fs);    // permite leituras simultaneas, impede escrita
                 searchResult = lookup(fs, name1); //procura por nome, devolve inumber
-                rOpened(fs);
+                rOpen(fs);
                 if(!searchResult)
                     printf("%s not found\n", name1);
                 else
@@ -195,10 +205,14 @@ void applyCommands(){
             case 'd':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
                 delete(fs, name1); 
-                wOpened(fs);
+                wOpen(fs);
                 break;
             case 'r':
+
+                // wClosed_rc(&mutex_HasTab);
+
                 while (1) {
+                    puts("r");
                     if (TryLock(fs2)) {
                         if (lookup(fs2, name2)) {
                             // printf("%s ja existe\n", name2);
@@ -210,15 +224,24 @@ void applyCommands(){
                                 Unlock(fs2);
                                 break;
                             }
+
+                            // wClosed_rc(&mutex_HasTab); //DEBUG
+
                             delete(fs, name1);
                             Unlock(fs);
                             create(fs2, name2, searchResult);
                             Unlock(fs2);
+
+                            // wOpen_rc(&mutex_HasTab);  //DEBUG
+
+
                             break;
                         } else 
                             Unlock(fs2);
                     }
                 }
+
+                // wOpen_rc(&mutex_HasTab);
                 break;
             case END_COMMAND:
                 pushEndCommand();
@@ -314,6 +337,7 @@ void threads_init(char *pwd) {
     struct timeval start, end; //tempo
     tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
     initMutex(&mutex_rm);
+    initMutex(&mutex_HasTab);
 
     if(gettimeofday(&start, NULL))  errnoPrint(); //erro
 
@@ -326,6 +350,7 @@ void threads_init(char *pwd) {
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 
     destroyMutex(&mutex_rm);
+    destroyMutex(&mutex_HasTab);
     free(tid_cons);
 }
 

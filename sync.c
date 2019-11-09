@@ -34,7 +34,7 @@ void wClosed_rc(pthread_mutex_t *mutex) {
 }
 
 /* Abre o write_lock do acesso ao vetor de comandos */
-void wOpened_rc(pthread_mutex_t *mutex) { 
+void wOpen_rc(pthread_mutex_t *mutex) { 
     #if defined(MUTEX) || defined(RWLOCK)
         erroCheck(pthread_mutex_unlock(mutex));
     #endif
@@ -60,7 +60,7 @@ void rClosed(tecnicofs fs) {
 }
 
 /* Abre o write_lock dos comandos que editam a arvore */
-void wOpened(tecnicofs fs) {
+void wOpen(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
     #elif RWLOCK
@@ -69,7 +69,7 @@ void wOpened(tecnicofs fs) {
 }
 
 /* Abre o read_lock do comando l*/
-void rOpened(tecnicofs fs) {
+void rOpen(tecnicofs fs) {
     #ifdef MUTEX
         erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
     #elif RWLOCK
@@ -79,9 +79,9 @@ void rOpened(tecnicofs fs) {
 
 int TryLock(tecnicofs fs) {
     #if defined(MUTEX)
-        return pthread_mutex_trylock(&fs->mutex_ap);
+        return !pthread_mutex_trylock(&fs->mutex_ap);
     #elif RWLOCK
-        return pthread_rwlock_trywrlock(&fs->rwlock);
+        return !pthread_rwlock_trywrlock(&fs->rwlock);
     #endif
         return 1; // para nosync, nunca se faz o lock 
 }
