@@ -21,9 +21,6 @@ int numberBuckets = 1;
 int nextINumber = 0;
 tecnicofs* hash_tab;
 pthread_mutex_t mutex_rm;   //bloqueio para removeCommand()
-
-pthread_mutex_t mutex_HasTab; // lock para acessos a HashTab
-
 sem_t sem_prod, sem_cons;   //semaforo para controlo do vetor comandos
 int index_prod = 0;
 int index_cons = 0;
@@ -94,8 +91,13 @@ void errorParse(){
 
 
 void initSemaforos(int initVal1, int initVal2){
-    cria_semaforo(&sem_prod,initVal1);
-    cria_semaforo(&sem_cons,initVal2);
+    create_semaforo(&sem_prod,initVal1);
+    create_semaforo(&sem_cons,initVal2);
+}
+
+void destroySemaforos(){
+    delete_semaforo(&sem_prod);
+    delete_semaforo(&sem_cons);
 }
 
 void pushEndCommand(){
@@ -178,10 +180,8 @@ void applyCommands(){
         tecnicofs fs;
         tecnicofs fs2;
 
-        // wClosed_rc(&mutex_HasTab);
         if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
         if (numTokens == 3 && name2 != NULL) fs2 = hash_tab[searchHash(name2, numberBuckets)];
-        // wOpen_rc(&mutex_HasTab);
 
 
         switch (token) {
@@ -190,10 +190,8 @@ void applyCommands(){
                 create(fs, name1, iNumber);
                 wOpen(fs);
                 break;
+
             case 'l':
-
-                puts("l");
-
                 rClosed(fs);    // permite leituras simultaneas, impede escrita
                 searchResult = lookup(fs, name1); //procura por nome, devolve inumber
                 rOpen(fs);
@@ -202,17 +200,15 @@ void applyCommands(){
                 else
                     printf("%s found with inumber %d\n", name1, searchResult);
                 break;
+
             case 'd':
                 wClosed(fs);    // bloqueia leituras e escritas do fs
                 delete(fs, name1); 
                 wOpen(fs);
                 break;
+
             case 'r':
-
-                // wClosed_rc(&mutex_HasTab);
-
                 while (1) {
-                    puts("r");
                     if (TryLock(fs2)) {
                         if (lookup(fs2, name2)) {
                             // printf("%s ja existe\n", name2);
@@ -225,27 +221,21 @@ void applyCommands(){
                                 break;
                             }
 
-                            // wClosed_rc(&mutex_HasTab); //DEBUG
-
                             delete(fs, name1);
                             Unlock(fs);
                             create(fs2, name2, searchResult);
                             Unlock(fs2);
-
-                            // wOpen_rc(&mutex_HasTab);  //DEBUG
-
-
                             break;
                         } else 
                             Unlock(fs2);
                     }
                 }
-
-                // wOpen_rc(&mutex_HasTab);
                 break;
+
             case END_COMMAND:
                 pushEndCommand();
                 return;
+                
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);
@@ -337,7 +327,7 @@ void threads_init(char *pwd) {
     struct timeval start, end; //tempo
     tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
     initMutex(&mutex_rm);
-    initMutex(&mutex_HasTab);
+    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER);
 
     if(gettimeofday(&start, NULL))  errnoPrint(); //erro
 
@@ -349,8 +339,8 @@ void threads_init(char *pwd) {
     if(gettimeofday(&end, NULL)) errnoPrint(); //erro
     printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
 
+    destroySemaforos();
     destroyMutex(&mutex_rm);
-    destroyMutex(&mutex_HasTab);
     free(tid_cons);
 }
 
@@ -360,7 +350,6 @@ int main(int argc, char* argv[]) {
     parseArgs(argc, argv);                                  // verifica numero de argumentos
 
     hash_tab = new_tecnicofs(numberBuckets);                // cria o fs (vazio)
-    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER);
     
     threads_init(argv[1]);                                  // inicializa as tarefas e chama a funcao applyCommands()
     print_tree_outfile(argv[2]);                            // imprime o conteudo final da fs para o ficheiro de saida

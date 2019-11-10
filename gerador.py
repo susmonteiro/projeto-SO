@@ -55,7 +55,7 @@ def gerar():
         elif cmd == 'r':
             if(len(db)==0): 
                 continue
-            if(not (random.randint(0,10)%10)): #(Prob 1/10)mesmo nome para teste de erros
+            elif(not (random.randint(0,10)%10)): #(Prob 1/10)mesmo nome para teste de erros
                 nome = random.choice(db)
                 line += cmd + ' ' + nome + ' ' + nome + '\n'
                 #mantemos o nome da db ja que e alterado para o mesmo

@@ -94,8 +94,12 @@ void Unlock(tecnicofs fs) {
     #endif
 }
 
-void cria_semaforo(sem_t *sem, int initVal){
+void create_semaforo(sem_t *sem, int initVal){
     if (sem_init(sem, 0, initVal)) errnoPrint();
+}
+
+void delete_semaforo(sem_t *sem){
+    if(sem_destroy(sem)) errnoPrint();
 }
 
 void esperar(sem_t *sem) {

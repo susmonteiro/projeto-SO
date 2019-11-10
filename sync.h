@@ -18,7 +18,8 @@ void wOpen_rc(pthread_mutex_t *mutex);
 void wClosed_rc(pthread_mutex_t *mutex);
 int TryLock(tecnicofs fs);
 void Unlock(tecnicofs fs);
-void cria_semaforo(sem_t *sem, int initVal);
+void create_semaforo(sem_t *sem, int initVal);
+void delete_semaforo(sem_t *sem);
 void esperar(sem_t *sem);
 void assinalar(sem_t *sem);
 

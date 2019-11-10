@@ -1,62 +1,67 @@
 # Makefile, versao 1
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
 
+SOURCES = main.c fs.c sync.c
+SOURCES+= lib/bst.c
+OBJS_NOSYNC = $(SOURCES:%.c=%.o)
+OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
+OBJS_RWLOCK = $(SOURCES:%.c=%-rwlock.o)
+OBJS = $(OBJS_NOSYNC) $(OBJS_MUTEX) $(OBJS_RWLOCK)
 CC   = gcc
 LD   = gcc
-CFLAGS =-Wall -std=gnu99 -I../
+CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
+TARGETS = tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
+
+.PHONY: all clean
+
+all: $(TARGETS)
+
+$(TARGETS):
+	$(LD) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 
-#Flag adicional que muda conforme a implementacao
-ADDICFLAGS=
-
-# A phony target is one that is not really the name of a file
-# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: all clean run
-
-all: 
-	make tecnicofs-nosync 
-	make tecnicofs-mutex 
-	make tecnicofs-rwlock 
-
-#tecnicofs-nosync: ADDICFLAGS = 	(REDUNDANTE)
-tecnicofs-nosync: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-nosync lib/bst.o lib/hash.o fs.o sync.o main.o
-
-tecnicofs-mutex: ADDICFLAGS = -DMUTEX 
-tecnicofs-mutex: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-mutex lib/bst.o lib/hash.o fs.o sync.o main.o
-
-tecnicofs-rwlock: ADDICFLAGS = -DRWLOCK 
-tecnicofs-rwlock: clean_ofiles lib/bst.o lib/hash.o fs.o sync.o main.o
-	$(LD) $(CFLAGS) $(LDFLAGS) -o tecnicofs-rwlock lib/bst.o lib/hash.o fs.o sync.o main.o   
-
+### no sync ###
 lib/bst.o: lib/bst.c lib/bst.h
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o lib/bst.o -c lib/bst.c
+fs.o: fs.c fs.h lib/bst.h lib/hash.h
+sync.o: sync.c sync.h 
+main.o: main.c fs.h lib/bst.h lib/hash.h sync.h
+tecnicofs-nosync: lib/bst.o fs.o sync.o main.o lib/hash.o
 
 lib/hash.o: lib/hash.c lib/hash.h
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o lib/hash.o -c lib/hash.c
 
-fs.o: fs.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o fs.o -c fs.c
+### MUTEX ###
+lib/bst-mutex.o: CFLAGS+=-DMUTEX
+lib/bst-mutex.o: lib/bst.c lib/bst.h
 
-sync.o: sync.c sync.h fs.h 
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o sync.o -c sync.c
+fs-mutex.o: CFLAGS+=-DMUTEX
+fs-mutex.o: fs.c fs.h lib/bst.h lib/hash.h
 
-main.o: main.c fs.h lib/bst.h
-	$(CC) $(CFLAGS) $(ADDICFLAGS) -o main.o -c main.c
+sync-mutex.o: CFLAGS+=-DMUTEX
+sync-mutex.o: sync.c sync.h 
+
+main-mutex.o: CFLAGS+=-DMUTEX
+main-mutex.o: main.c fs.h lib/bst.h sync.h lib/hash.h
+tecnicofs-mutex: lib/bst-mutex.o fs-mutex.o sync-mutex.o main-mutex.o lib/hash.o
+
+### RWLOCK ###
+lib/bst-rwlock.o: CFLAGS+=-DRWLOCK
+lib/bst-rwlock.o: lib/bst.c lib/bst.h
+
+fs-rwlock.o: CFLAGS+=-DRWLOCK
+fs-rwlock.o: fs.c fs.h lib/bst.h lib/hash.h
+
+sync-rwlock.o: CFLAGS+=-DRWLOCK
+sync-rwlock.o: sync.c sync.h 
+
+main-rwlock.o: CFLAGS+=-DRWLOCK
+main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h sync.h
+tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o main-rwlock.o lib/hash.o
 
 
-clean_ofiles:
-	@echo Cleaning Ofiles...
-	rm -f lib/*.o *.o
+%.o:
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	@echo Cleaning...
-	rm -f lib/*.o *.o tecnicofs* out*
-
-run: 
-	make
-	./tecnicofs-nosync inputs/test4.txt out1 1 10
-	./tecnicofs-mutex inputs/test4.txt out2 2 10
-	./tecnicofs-rwlock inputs/test4.txt out3 3 10
+	rm -f $(OBJS) $(TARGETS)
