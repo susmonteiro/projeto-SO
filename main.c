@@ -211,21 +211,23 @@ void applyCommands(){
                 while (1) {
                     if (TryLock(fs2)) {
                         if (lookup(fs2, name2)) {
-                            // printf("%s ja existe\n", name2);
                             Unlock(fs2);
                             break; //se ja existir, a operacao e' cancelada sem devolver erro
-                        } else if (TryLock(fs)) {
+                        } else if (fs==fs2 || TryLock(fs)) {
                             if ((searchResult = lookup(fs, name1)) == 0) {
                                 Unlock(fs);
-                                Unlock(fs2);
+                                if (fs != fs2) Unlock(fs2); // nao fazer unlock 2 vezes da mesma arvore
                                 break;
                             }
 
                             delete(fs, name1);
-                            Unlock(fs);
+                            if (fs != fs2) Unlock(fs);
+                            // se as fs forem iguais nao podemos fazer unlock antes do create
                             create(fs2, name2, searchResult);
                             Unlock(fs2);
-                            break;
+
+                            break;                            // se as
+
                         } else 
                             Unlock(fs2);
                     }

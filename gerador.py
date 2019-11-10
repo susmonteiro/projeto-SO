@@ -36,6 +36,7 @@ def gerar():
     line = ""
     for i in range(int(sys.argv[1])):
         cmd = random.choice(comands)  
+        nome = ""
         if cmd == 'c':
             nome = createName()
             line = cmd + ' '  
@@ -61,10 +62,10 @@ def gerar():
                 #mantemos o nome da db ja que e alterado para o mesmo
             else:
                 prevName = random.choice(db)
-                nome = createName()
-                line += cmd + ' ' + prevName + ' ' + nome + '\n'
                 db.remove(prevName)
-                db += nome
+                nome = createName()
+                db += [nome]
+                line += cmd + ' ' + prevName + ' ' + nome + '\n'
                 #muda para novo nome
         
         fpin.write(line)
