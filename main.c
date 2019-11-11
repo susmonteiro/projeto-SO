@@ -130,6 +130,7 @@ void pushEndCommand(){
 //Funcoes sobre Arvores
 //=====================
 
+//Inicializa memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void initHashTable(int size){
     int i = 0;
 	hash_tab = (tecnicofs*)malloc(size * sizeof(tecnicofs)); //alocacao da tabela para tecnicofs
@@ -141,13 +142,14 @@ void initHashTable(int size){
 	}
 }
 
+//Liberta memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void freeHashTab(int size){
     int i;
 	for(i = 0; i < size; i++) {
 		destroyLock(hash_tab[i]);
 		free_tecnicofs(hash_tab[i]);
 	}
-	free(hash_tab);
+	free(hash_tab); //liberta tabela (final)
 }
 //Comando renomear
 void renameCommand(tecnicofs fs1, char *name1, char *name2){
@@ -272,7 +274,7 @@ void threads_init(char *pwd) {
     struct timeval start, end; //tempo
     tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
     initMutex(&mutex_rm);
-    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER);
+    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER); //inicializar semaforos que implemntam produtor-consumidor
 
     if(gettimeofday(&start, NULL))  errnoPrint(); 
 
@@ -347,10 +349,11 @@ void applyCommands(){
     while(1) { //enquanto houver comandos
         int iNumber;
         char command[MAX_INPUT_SIZE];
-
-        iNumber = removeCommand(command); //pop do comando
+        //pop do comando
+        iNumber = removeCommand(command);
         if (iNumber == COMMAND_NULL) continue;
 
+        //parse do comando
         char token;
         char name1[MAX_INPUT_SIZE];
         char name2[MAX_INPUT_SIZE];
@@ -366,9 +369,9 @@ void applyCommands(){
         }
 
 
-        int searchResult;
-        tecnicofs fs;
-
+        int searchResult;   //inumber retornado pela funcao lookup do comando l
+        
+        tecnicofs fs;       //arvore do nome atual
         if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
 
         switch (token) {
@@ -403,7 +406,7 @@ void applyCommands(){
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
                 pushEndCommand(); 
                 return;
-                
+
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
                 exit(EXIT_FAILURE);
@@ -412,9 +415,9 @@ void applyCommands(){
     }
 }
 
-
-
-
+//===========
+//Funcao MAIN
+//===========
 int main(int argc, char* argv[]) {
     parseArgs(argc, argv);                                  // verifica numero de argumentos
 
