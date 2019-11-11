@@ -5,6 +5,7 @@ OUTPUTDIR=$2
 MAXTHREADS=$3
 NUMBUCKETS=$4
 
+<<<<<<< HEAD
 if [ "$#" -ne 4 ]; then
     echo "Invalid number of arguments"
     exit 1
@@ -22,6 +23,9 @@ elif [ ! -d "${OUTPUTDIR}" ]; then
     mkdir -p $OUTPUTDIR #cria a diretoria de OUTPUT se esta ainda nao existir
 fi
 
+=======
+mkdir -p $OUTPUTDIR #cria a diretoria de OUTPUT se esta ainda nao existir
+>>>>>>> e1e57424caf24e4b02fe8f4f925864ceb7d35831
 
 for input in ${INPUTDIR}/*.txt 
 do

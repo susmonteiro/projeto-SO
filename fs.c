@@ -3,40 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 
-
-/* int obtainNewInumber(int *nextINumber) {
-    // incrementa sequencialmente o Inumber
-	int newInumber = ++(*nextINumber);
-	return newInumber;
-} */
-
-tecnicofs* new_tecnicofs(int size){
-    // cria o root do filesystem
-	int i = 0;
-
-	tecnicofs* hashTab = (tecnicofs*)malloc(size * sizeof(tecnicofs));
-	for(i = 0; i < size; i++) {
-
-		hashTab[i] = malloc(sizeof(struct tecnicofs));
-		if (!hashTab[i]) {
+//Cria um sistema de ficheiros (Tecnicofs)
+tecnicofs new_tecnicofs(){
+	tecnicofs fs = malloc(sizeof(struct tecnicofs));
+	if (!fs) {
 			perror("failed to allocate tecnicofs");
 			exit(EXIT_FAILURE);
 		}
-
-		initLock(hashTab[i]);
-		hashTab[i]->bstRoot = NULL;
-	}
-	
-	return hashTab;
-}
-
-void free_hashTab(tecnicofs* hashTab, int size){
-	int i;
-	for(i = 0; i < size; i++) {
-		destroyLock(hashTab[i]);
-		free_tecnicofs(hashTab[i]);
-	}
-	free(hashTab);
+	return fs;
 }
 
 void free_tecnicofs(tecnicofs fs){
@@ -69,38 +43,4 @@ void print_tecnicofs_tree(FILE * fp, tecnicofs fs){
 
 int searchHash(char *name, int size) {
 	return hash(name, size);
-}
-
-
-void initMutex(pthread_mutex_t *mutex) {
-    pthread_mutex_init(mutex, NULL);
-}
-
-void destroyMutex(pthread_mutex_t *mutex) {
-    pthread_mutex_destroy(mutex);
-}
-
-void initRWLock(pthread_rwlock_t *rwlock) {
-    pthread_rwlock_init(rwlock, NULL);
-    
-}
-
-void destroyRWLock(pthread_rwlock_t *rwlock) {
-    pthread_rwlock_destroy(rwlock);
-}
-
-void initLock(tecnicofs fs){
-    #ifdef MUTEX
-        initMutex(&fs->mutex_ap);  //ERROOOOOOOOOOOOOOOO
-    #elif RWLOCK
-        initRWLock(&fs->rwlock);
-    #endif
-}
-
-void destroyLock(tecnicofs fs) {
-    #ifdef MUTEX
-        destroyMutex(&fs->mutex_ap);
-    #elif RWLOCK
-        destroyRWLock(&fs->rwlock);
-    #endif
 }
