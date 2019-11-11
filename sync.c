@@ -29,7 +29,7 @@ void errnoPrint(){
 /*Inicializa Lock (Mutex|RWlock)*/
 void initLock(tecnicofs fs){
     #ifdef MUTEX
-        initMutex(&fs->mutex_ap);  //ERROOOOOOOOOOOOOOOO
+        initMutex(&fs->mutex_ap);
     #elif RWLOCK
         initRWLock(&fs->rwlock);
     #endif

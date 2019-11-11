@@ -12,14 +12,16 @@ elif [ ! -d "${INPUTDIR}" ]; then
     echo "$1 is not a directory"
     exit 1
 elif [[ ! "$MAXTHREADS" =~ ^[0-9]+$ ]] || [ "$MAXTHREADS" -lt 1 ]; then
+    #verifica se o argumento e' inteiro e se e' superior a
     #se o numero de threads inserido for 1, corre apenas o nosync
     echo "Invalid number of threads"
     exit 1
 elif [[ ! "$NUMBUCKETS" =~ ^[0-9]+$ ]] || [ "$NUMBUCKETS" -lt 1 ]; then
+    #verifica se o argumento e' inteiro e se e' superior 
     echo "Invalid number of buckets"
     exit 1
 elif [ ! -d "${OUTPUTDIR}" ]; then
-    mkdir -p $OUTPUTDIR #cria a diretoria de OUTPUT se esta ainda nao existir
+    mkdir -p $OUTPUTDIR     #cria a diretoria de OUTPUT se esta ainda nao existir
 fi
 
 
