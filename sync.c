@@ -26,6 +26,41 @@ void errnoPrint(){
 
 
 
+/*Inicializa Lock (Mutex|RWlock)*/
+void initLock(tecnicofs fs){
+    #ifdef MUTEX
+        initMutex(&fs->mutex_ap);  //ERROOOOOOOOOOOOOOOO
+    #elif RWLOCK
+        initRWLock(&fs->rwlock);
+    #endif
+}
+
+void initMutex(pthread_mutex_t *mutex) {
+    if (pthread_mutex_init(mutex, NULL)) errnoPrint();
+}
+
+void initRWLock(pthread_rwlock_t *rwlock) {
+    if(pthread_rwlock_init(rwlock, NULL)) errnoPrint();
+    
+}
+
+/*Destroi Lock (Mutex|RWlock)*/
+void destroyLock(tecnicofs fs) {
+    #ifdef MUTEX
+        destroyMutex(&fs->mutex_ap);
+    #elif RWLOCK
+        destroyRWLock(&fs->rwlock);
+    #endif
+}
+
+void destroyMutex(pthread_mutex_t *mutex) {
+    if (pthread_mutex_destroy(mutex)) errnoPrint();
+}
+
+void destroyRWLock(pthread_rwlock_t *rwlock) {
+    if(pthread_rwlock_destroy(rwlock)) errnoPrint();
+}
+
 /* Fecha o write_lock do acesso ao vetor de comandos */ 
 void wClosed_rc(pthread_mutex_t *mutex) {
     #if defined(MUTEX) || defined(RWLOCK)
@@ -39,7 +74,6 @@ void wOpen_rc(pthread_mutex_t *mutex) {
         erroCheck(pthread_mutex_unlock(mutex));
     #endif
 }
-
 
 /* Fecha o write_lock dos comandos que editam a arvore */
 void wClosed(tecnicofs fs) {
@@ -76,6 +110,7 @@ void rOpen(tecnicofs fs) {
         erroCheck(pthread_rwlock_unlock(&fs->rwlock));
     #endif
 }
+
 
 int TryLock(tecnicofs fs) {
     #if defined(MUTEX)
