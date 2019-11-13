@@ -123,9 +123,35 @@ Esta operação é suportada pelo comando 'r'
 Sendo *f1* o *nome atual* e *f2* o *novo nome*
 
 #### Shell script
+
 Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do TecnicoFS.
+
 ---
 ## Exercício 3
+
+#### *I-nodes* e conteudos dos ficheiros
+
+Tecnicofs passa a manter uma tabela de *i-nodes*
+
+Cada ficheiro passa a ter um dono (UID) e a cada ficheiro estao associadas permissoes de leitura e escrita, sendo que sao definidas no momento de criacao do ficheiro e as **permissoes nao podem ser alteradas**
+
+O ficheiro tem conteudo (string com '\0' no fim), sendo um ponteiro para este conteudo guardado no *i-node*
+
+Todos estes elementos sao guardados no *i-node* do ficheiro
+
+#### Comunicacao com processos clientes
+
+O servidor TecnicoFS deixa de carregar comandos a partir de ficheiro. Em vez disso, passa a ter um
+socket Unix do tipo stream, através do qual recebe e aceita ligações solicitadas por outros processos,
+que designamos de processos cliente.
+
+Argumentos da linha de comandos:
+
+        tecnicofs nomesocket outputfile numbuckets
+
+**nomesocket** - nome que deve ser associado ao *socket* atraves do qual o servidor recebe pedidos de ligacao
+
+Tarefa inicial: responsavel por inicializar o *socket* e aceitar pedidos de ligacao
 
 ---
 ## Perguntitas

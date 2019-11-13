@@ -1,4 +1,27 @@
-#include "constants.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <ctype.h>
+#include <sys/time.h>
+#include "fs.h"
+#include "sync.h"
+
+//==========
+//Constantes
+//==========
+#define MAX_COMMANDS 10 //vetor de comandos tem no maximo 10 comandos num determinado momento
+#define INITVAL_COMMAND_READER 0 //inicialmente o vetor de comandos esta vazio logo nao ha comandos para consumir0 
+#define MAX_INPUT_SIZE 100
+#define MILLION 1000000
+#define N_ARGC 5
+#define COMMAND_NULL -1 //Comando inexistente
+#define END_COMMAND 'x' //Comando criado para terminar as threads
+
+//=====================
+//Prototipos principais
+//=====================
+void applyCommands();
+void processInput(const char *pwd);
 
 //=================
 //Variaveis Globais
@@ -77,15 +100,13 @@ int removeCommand(char *command) {
     // pop do comando
     int iNumber = 0;
     esperar(&sem_cons);     // verifica se pode consumir
-    wClosed_rc(&mutex_rm);  // impede acessos simultaneos ao vetor de comandos
+    wClosed_rc(&mutex_rm); // impede acessos simultaneos ao vetor de comandos
         
-    strcpy(command, inputCommands[index_cons]);
+    strcpy(command, inputCommands[index_cons]);  //incrementa o indice
     index_cons = (index_cons + 1) % MAX_COMMANDS;
 
-    if (command == NULL)        //salvaguarda
-        //devolve o identificador do comando invalido e consequentemente a 
-        // nova iteracao do while da funcao applyCommands
-        iNumber = COMMAND_NULL; 
+    if (command == NULL)    //salvaguarda
+        iNumber = COMMAND_NULL; //nova iteracao do while
 
     if(command[0] == 'c')
         iNumber = ++nextINumber; //obter novo inumber (sequencial)
@@ -117,7 +138,7 @@ void initHashTable(int size){
 		hash_tab[i] = new_tecnicofs();  // aloca um tecnicofs (uma arvore)
 		initLock(hash_tab[i]);          // inicializa trinco desse tecnicofs (arvore)
 
-		hash_tab[i]->bstRoot = NULL;    // raiz de cada arvore, inicialmente nula
+		hash_tab[i]->bstRoot = NULL;    // raiz de cada arvore
 	}
 }
 
@@ -130,22 +151,18 @@ void freeHashTab(int size){
 	}
 	free(hash_tab); //liberta tabela (final)
 }
-
 //Comando renomear
 void renameCommand(tecnicofs fs1, char *name1, char *name2){
-	int searchResult;   //inumber do ficheiro atual, retornado pela funcao lookup
-    //name2 != null, tal como verificado na funcao applyCommands()
-    tecnicofs fs2 = hash_tab[searchHash(name2, numberBuckets)]; 
+	int searchResult;
+    tecnicofs fs2 = hash_tab[searchHash(name2, numberBuckets)]; //name2 != null, tal como verificado na funcao applyCommands()
 
 	while (1) {
-        //tentativa de bloqueio da arvore onde o ficheiro, com o novo nome, vai ser inserido
-		if (TryLock(fs2)) {     
+		if (TryLock(fs2)) {
 			if (lookup(fs2, name2)) { //se ja existir, a operacao e' cancelada sem devolver erro
 				Unlock(fs2);
-				break;
-            //se o ficheiro com o novo nome for guardado na arvore onde se encontra atualmente, 
-            //nao podemos voltar a bloquear a tecnicofs, pois nesse caso ficariamos em deadlock (interblocagem) 
-			} else if (fs1==fs2 || TryLock(fs1)) { 
+				break; 
+			} else if (fs1==fs2 || TryLock(fs1)) {
+
                 // Procurar o ficheiro pelo nome; Se existir [searchResult = Inumber do Ficheiro]
 				if ((searchResult = lookup(fs1, name1)) == 0) {
 					Unlock(fs1);
@@ -156,7 +173,7 @@ void renameCommand(tecnicofs fs1, char *name1, char *name2){
 				delete(fs1, name1);
 				if (fs1 != fs2) Unlock(fs1);
 				// se as fs forem iguais nao podemos fazer unlock antes do create
-				create(fs2, name2, searchResult); // ficheiro renomeado: novo nome, mesmo Inumber
+				create(fs2, name2, searchResult); // novo ficheiro: novo nome, mesmo Inumber
 				Unlock(fs2);
 
 				break;
@@ -185,7 +202,7 @@ void print_tree_outfile(const char *pwd) {
 //Funcoes sobre Tarefas
 //=====================
 
-/* A funcao devolve a diferenca entre tempo inicial e final, em segundos*/
+/* A funcao devolve a diferenca entre tempo inicial e fical, em segundos*/
 float time_taken(struct timeval start, struct timeval end) {
     float secs;
     float microseconds;
@@ -197,8 +214,7 @@ float time_taken(struct timeval start, struct timeval end) {
 
 //cria a tarefa produtora
 void startInput(char *pwd) {
-    //processInput: carrega o vetor global com comandos
-    if (pthread_create(&tid_prod, NULL, (void *)processInput, pwd)){    
+    if (pthread_create(&tid_prod, NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
         fprintf(stderr, "Error: not able to create thread.\n");
         exit(EXIT_FAILURE);
     }
@@ -207,8 +223,7 @@ void startInput(char *pwd) {
 //cria as tarefas consumidoras
 void commands_threads_init(){
     int i;
-    for (i = 0; i < numberThreads; i++) { 
-        // inicializar numberThreads tarefas (as tarefas consumidoras), com applyCommands()
+    for (i = 0; i < numberThreads; i++) { // inicializar numberThreads tarefas, com applyCommands()
         if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { 
             fprintf(stderr, "Error: not able to create thread.\n");
             exit(EXIT_FAILURE);
@@ -240,11 +255,11 @@ void startCommands() {
 //Funcao que trata a finalizacao das tarefas
 void joinAllThreads(){
     int i;
-    if (pthread_join(tid_prod, NULL)){ // termina a tarefa produtora
+    if (pthread_join(tid_prod, NULL)){ // mata produtora)
         fprintf(stderr, "Error: not able to terminate thread.\n");
         exit(EXIT_FAILURE);
     } 
-    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas consumidoras
+    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas
         if (pthread_join (tid_cons[i], NULL)) {
             fprintf(stderr, "Error: not able to terminate thread.\n");
             exit(EXIT_FAILURE);
@@ -254,7 +269,7 @@ void joinAllThreads(){
 
 
 /* Inicializa a tarefa produtora e pool de tarefas (consumidoras) que chamam a funcao applyCommands()
-   Apos terminar as tarefas, imprime o tempo decorrido no STDOUT */
+   Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
 void threads_init(char *pwd) {
     struct timeval start, end; //tempo
     tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
@@ -280,8 +295,8 @@ void threads_init(char *pwd) {
 //==================
 //Funcoes principais
 //==================
-//funcao que e' chamada pela thread produtora e que copia os comandos do ficheiro 
-//para o vetor de comandos, verificando se os comandos sao validos
+//funcao que e' chamada pela thread produtora e que copia os comandos do ficheiro para o vetor de comandos, 
+// verificando se os comandos sao validos
 void processInput(const char *pwd){
     char line[MAX_INPUT_SIZE];
     FILE *fp = fopen(pwd, "r");
@@ -304,7 +319,7 @@ void processInput(const char *pwd){
             case 'c':
             case 'l':
             case 'd':
-                if(numTokens != 2)  //Comandos c, l, d recebem 1 nome
+                if(numTokens != 2)
                     errorParse();
                 insertCommand(line);
                 break;
@@ -325,8 +340,8 @@ void processInput(const char *pwd){
         fprintf(stderr, "Error: file not closed.\n");
         exit(EXIT_FAILURE);
     }
-    //acrescenta um ultimo comando ao vetor (que provoca o inicio da finalizacao das threads)
-    pushEndCommand(); 
+
+    pushEndCommand(); //acrescenta um ultimo comando ao vetor (exit)
 }
 
 //funcao chamada pelas threads consumidoras e trata de executar os comandos do vetor de comandos
@@ -343,13 +358,12 @@ void applyCommands(){
         char name1[MAX_INPUT_SIZE];
         char name2[MAX_INPUT_SIZE];
 
-        int numTokens = sscanf(command, "%c %s %s", &token, name1, name2); //scanf formatado "comando nome nome"
+        int numTokens = sscanf(command, "%c %s %s", &token, name1, name2); //scanf formatado "comando nome"
         
-        if (numTokens > 3 || numTokens < 1) { // qualquer comando que nao tenha 1,2 ou 3 argumentos, e' invalido
+        if (numTokens > 3 || numTokens < 1) { // qualquer comando que nao tenha 1,2,3 argumentos, e' invalido
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
-        //teste para caso comando 'x' e 'r', que tem um numero especifico de argumentos
-        } else if ((numTokens == 1 && token != END_COMMAND) || (numTokens == 3 && token != 'r')) { 
+        } else if ((numTokens == 1 && token != END_COMMAND) || (numTokens == 3 && token != 'r')) { //teste para caso comando 'x' e 'r' 
             fprintf(stderr, "Error: invalid command in Queue\n");
             exit(EXIT_FAILURE);
         }
@@ -357,7 +371,7 @@ void applyCommands(){
 
         int searchResult;   //inumber retornado pela funcao lookup do comando l
         
-        tecnicofs fs;       //arvore onde esta o ficheiro atual
+        tecnicofs fs;       //arvore do nome atual
         if (numTokens > 1 && name1 != NULL) fs = hash_tab[searchHash(name1, numberBuckets)];
 
         switch (token) {
@@ -405,13 +419,13 @@ void applyCommands(){
 //Funcao MAIN
 //===========
 int main(int argc, char* argv[]) {
-    parseArgs(argc, argv);          // verifica numero de argumentos
+    parseArgs(argc, argv);                                  // verifica numero de argumentos
 
-    initHashTable(numberBuckets);   //inicializa o sistema de ficheiros
+    initHashTable(numberBuckets);
     
-    threads_init(argv[1]);          // inicializa as tarefas (produtora e consumidoras)
-    print_tree_outfile(argv[2]);    // imprime o conteudo final da fs para o ficheiro de saida
+    threads_init(argv[1]);                                  // inicializa as tarefas e chama a funcao applyCommands()
+    print_tree_outfile(argv[2]);                            // imprime o conteudo final da fs para o ficheiro de saida
     
-    freeHashTab(numberBuckets);     //liberta a memoriaa alocada para o sistema de ficheiros
+    freeHashTab(numberBuckets);
     exit(EXIT_SUCCESS);
 }

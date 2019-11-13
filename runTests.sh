@@ -25,7 +25,7 @@ elif [ ! -d "${OUTPUTDIR}" ]; then
 fi
 
 
-for input in ${INPUTDIR}/*.txt 
+for input in $(find -maxdepth 1 -type f ${INPUTDIR}) 
 do
     fileName_withExt=${input#${INPUTDIR}/}
     fileName_withoutExt=${fileName_withExt%.*}
