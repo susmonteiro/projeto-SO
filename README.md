@@ -129,17 +129,7 @@ Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do
 
 ---
 ## Perguntitas
-
-* fazer numthreads = numthreads + 1 (thread produtora) ???? 
-* vamos tornar o pwd global?? inputfile
-
-
-* init mutex, rw e sem
-* destroy mutex, rw e sem
-
-a1 a2 mesma arvore
-nao esquecer destroy e init sems
-hashtab e' global, no apply commands nao pode estar fora
+* sao precisos locks a volta do produtor?
   
 ---
 ### Solucao wait infinito produtor-consumidor
