@@ -3,8 +3,6 @@
 #include <getopt.h>
 #include <ctype.h>
 #include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include "fs.h"
 #include "sync.h"
 
@@ -15,7 +13,7 @@
 #define INITVAL_COMMAND_READER 0 //inicialmente o vetor de comandos esta vazio logo nao ha comandos para consumir0 
 #define MAX_INPUT_SIZE 100
 #define MILLION 1000000
-#define N_ARGC 4
+#define N_ARGC 5
 #define COMMAND_NULL -1 //Comando inexistente
 #define END_COMMAND 'x' //Comando criado para terminar as threads
 
@@ -28,8 +26,7 @@ void processInput(const char *pwd);
 //=================
 //Variaveis Globais
 //=================
-char* nomeSocket;
-char* outputFile;
+int numberThreads = 0;
 int numberBuckets = 1;
 int nextINumber = 0;
 
@@ -66,11 +63,8 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     } else {
-        nomeSocket = (char*)malloc(sizeof(char)*strlen(argv[1]));
-        strcpy(nomeSocket, argv[1]);  // falta \0 ??
-        outputFile = (char*)malloc(sizeof(char)*strlen(argv[2]));
-        strcpy(outputFile, argv[2]);
-        numberBuckets = atoi(argv[3]);
+        numberThreads = atoi(argv[3]); 
+        numberBuckets = atoi(argv[4]);
     }
 
 }
@@ -191,8 +185,8 @@ void renameCommand(tecnicofs fs1, char *name1, char *name2){
 }
 
 /* Abre o ficheiro de output e escreve neste a arvore */
-void print_tree_outfile() {
-    FILE *fpout = fopen(outputFile, "w");
+void print_tree_outfile(const char *pwd) {
+    FILE *fpout = fopen(pwd, "w");
 
     if (!fpout) {
         errnoPrint();
@@ -203,19 +197,9 @@ void print_tree_outfile() {
     fclose(fpout);
 }
 
-//=====================
-//Funcoes sobre sockets
-//=====================
-void socketInit() {
-    int sockfd;
-    if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        errnoPrint();
-    
-}
-
 
 //=====================
-//Funcoes sobre tarefas
+//Funcoes sobre Tarefas
 //=====================
 
 /* A funcao devolve a diferenca entre tempo inicial e fical, em segundos*/
@@ -226,6 +210,85 @@ float time_taken(struct timeval start, struct timeval end) {
     secs = end.tv_sec - start.tv_sec; 
     microseconds = (end.tv_usec - start.tv_usec)/(float)MILLION;
     return secs + microseconds;
+}
+
+//cria a tarefa produtora
+void startInput(char *pwd) {
+    if (pthread_create(&tid_prod, NULL, (void *)processInput, pwd)){    // carrega o vetor global com comandos
+        fprintf(stderr, "Error: not able to create thread.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//cria as tarefas consumidoras
+void commands_threads_init(){
+    int i;
+    for (i = 0; i < numberThreads; i++) { // inicializar numberThreads tarefas, com applyCommands()
+        if (pthread_create(&tid_cons[i], NULL, (void *)applyCommands, NULL)) { 
+            fprintf(stderr, "Error: not able to create thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+}
+
+/* Define o numero de tarefas que vao ser criadas na pool, [threads_init()]
+   Numero de threads e' uma variavel global */
+void startCommands() {
+    #if defined(MUTEX) || defined(RWLOCK)
+        if(numberThreads < 1) {
+            fprintf(stderr, "Error: number of threads invalid.\n");
+            exit(EXIT_FAILURE); 
+        }
+    #else   //para versao nosync (sem threads)
+        if(numberThreads != 1) {
+            fprintf(stderr, "Error: number of threads invalid.\n");
+            exit(EXIT_FAILURE); 
+        }
+        numberThreads = 1; // variavel global
+    #endif
+
+    commands_threads_init(); // inicia pool de tarefas
+}
+
+
+//Funcao que trata a finalizacao das tarefas
+void joinAllThreads(){
+    int i;
+    if (pthread_join(tid_prod, NULL)){ // mata produtora)
+        fprintf(stderr, "Error: not able to terminate thread.\n");
+        exit(EXIT_FAILURE);
+    } 
+    for (i = 0; i < numberThreads; i++){ //terminar todas as tarefas
+        if (pthread_join (tid_cons[i], NULL)) {
+            fprintf(stderr, "Error: not able to terminate thread.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+
+/* Inicializa a tarefa produtora e pool de tarefas (consumidoras) que chamam a funcao applyCommands()
+   Apos terminar as tarefas imprime o tempo decorrido no STDOUT */
+void threads_init(char *pwd) {
+    struct timeval start, end; //tempo
+    tid_cons = (pthread_t*) malloc(sizeof(pthread_t*)*(numberThreads)); // inicializa as threads consumidoras
+    initMutex(&mutex_rm);
+    initSemaforos(MAX_COMMANDS, INITVAL_COMMAND_READER); //inicializar semaforos que implemntam produtor-consumidor
+
+    if(gettimeofday(&start, NULL))  errnoPrint(); 
+
+    startInput(pwd);    //funcao que trata da tarefa produtora
+    startCommands();    //funcao que trata das tarefas consumidoras
+    joinAllThreads();   //funcao que trata de terminar todas as tarefas (a produtora e as consumidoras)
+    
+
+    if(gettimeofday(&end, NULL)) errnoPrint(); 
+    printf("TecnicoFS completed in %0.04f seconds.\n", time_taken(start, end));
+
+    destroySemaforos();
+    destroyMutex(&mutex_rm);
+    free(tid_cons);
 }
 
 
@@ -360,8 +423,8 @@ int main(int argc, char* argv[]) {
 
     initHashTable(numberBuckets);
     
-    socketInit();                                  // inicializa as tarefas e chama a funcao applyCommands()
-    print_tree_outfile();                            // imprime o conteudo final da fs para o ficheiro de saida
+    threads_init(argv[1]);                                  // inicializa as tarefas e chama a funcao applyCommands()
+    print_tree_outfile(argv[2]);                            // imprime o conteudo final da fs para o ficheiro de saida
     
     freeHashTab(numberBuckets);
     exit(EXIT_SUCCESS);
