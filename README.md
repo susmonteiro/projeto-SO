@@ -123,9 +123,78 @@ Esta operação é suportada pelo comando 'r'
 Sendo *f1* o *nome atual* e *f2* o *novo nome*
 
 #### Shell script
+
 Desenvolver um *shell script* chamado *runTests.sh* para avaliar o desempenho do TecnicoFS.
+
 ---
 ## Exercício 3
+
+#### *I-nodes* e conteudos dos ficheiros
+
+Tecnicofs passa a manter uma tabela de *i-nodes*
+
+Cada ficheiro passa a ter um dono (UID) e a cada ficheiro estao associadas permissoes de leitura e escrita, sendo que sao definidas no momento de criacao do ficheiro e as **permissoes nao podem ser alteradas**
+
+O ficheiro tem conteudo (string com '\0' no fim), sendo um ponteiro para este conteudo guardado no *i-node*
+
+Todos estes elementos sao guardados no *i-node* do ficheiro
+
+#### Comunicacao com processos clientes
+
+O servidor TecnicoFS deixa de carregar comandos a partir de ficheiro. Em vez disso, passa a ter um
+socket Unix do tipo stream, através do qual recebe e aceita ligações solicitadas por outros processos,
+que designamos de processos cliente.
+
+Argumentos da linha de comandos:
+
+        tecnicofs nomesocket outputfile numbuckets
+
+**nomesocket** - nome que deve ser associado ao *socket* atraves do qual o servidor recebe pedidos de ligacao
+
+- Tarefa inicial: responsavel por inicializar o *socket* e aceitar pedidos de ligacao
+- nova ligacao de um cliente: uma nova tarefa escrava fica encarregue de executar e responder aos pedidos desse cliente
+- **Sessao** - periodo em que a ligacao esta ativa 
+- tabela de ficheiros abertos: criada pela tarefa escrava e usada durante a sessao; **vetor com 5 entradas** - podemos escolher o conteudo de cada entrada deste vetor
+- final da ligacao: tarefa escrava liberta a tabela e termina
+
+#### Terminacao do servidor
+
+O processo servidor termina ordeiramente quando recebe o sinal ***SIGINT*** (Ctrl+c), da seguinte forma:
+- tratado pela tarefa inicial (a que esta a aceitar novos pedidos de ligacao)
+- a partir do momento em que recebe este sinal, deixa de receber novos pedidos de ligacao
+- o servidor so termina quando todas as sessoes ativas tiverem terminado
+- o tempo deve ser impresso e o conteudo final escrito num ficheiro de saida (tal como ja esta implementado)
+
+#### API cliente do Tecnicofs
+
+>Interface de programacao (API): nao alterar .h e codigo de erros fornecidos
+
+Funcoes da API:
+- *int mount(char *address)*: estabelece uma ligacao
+- *int unmount()*: termina uma ligacao
+
+Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
+- *int create(char *filename, int ownerPermissions, int othersPermissions)*
+- *int delete(char *filename)*
+- *int rename(char *filenameOld, char *filenameNew)*
+- *int close(int fd)*
+- *int read (int fd, char *buffer, int len)*
+- *int write (int fd, char *buffer, int len)*
+
+>nem todos os erros que e suposto as funcoes devolverem esta especificados, podemos ter que adicionar outros
+
+#### Protocolo de pedido-resposta
+- as mensagens de pedidos sao *strings* 
+- os varios campos das mensagens sao separados por ' '
+- o processo recetor deve ler do *socket stream* ate alcancar '\0'
+- um processo cliente so envia um pedido apos ter recebido resposta para o pedido anterior
+
+#### Notas
+- nao e suposto tornar a tabela de *i-nodes* mais eficientes
+- nao se consideram permissoes do grupo
+- deixa de existir uma pool de tarefas escravas
+- para o sinal ***SIGINT*** usar a funcao *pthread_sigmask*
+- sistema em que corre com semantica BSD
 
 ---
 ## Perguntitas
