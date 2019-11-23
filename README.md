@@ -199,6 +199,7 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 ---
 ## Perguntitas
 * sao precisos locks a volta do produtor?
+* Numero de connections maximo?? (por agora listen(SOMAXCONN))
   
 ---
 ### Solucao wait infinito produtor-consumidor
@@ -210,4 +211,9 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 * Uma thread ira ler este comando
   * Vai voltar a escrever o comando (atencao a exclusao mutua)
   * exit_thread
-* 
+
+
+---
+##Bibliografia
+
+- http://retis.sssup.it/~lipari/courses/OS_CP/sockets.pdf
