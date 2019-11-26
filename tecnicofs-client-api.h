@@ -12,7 +12,7 @@
 #define NOT_CONNECTED -1
 #define PADDING_COMMAND_C 6
 #define SUCCESS 0
-#define FAIL '1'
+#define FAIL 1
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions);
 int tfsDelete(char *filename);
