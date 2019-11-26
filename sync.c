@@ -35,6 +35,10 @@ void initLock(tecnicofs fs){
     #endif
 }
 
+void initCond(pthread_cond_t *cond) {
+    if (pthread_cond_init(cond, NULL)) errnoPrint();
+}
+
 void initMutex(pthread_mutex_t *mutex) {
     if (pthread_mutex_init(mutex, NULL)) errnoPrint();
 }

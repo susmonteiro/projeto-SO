@@ -2,16 +2,17 @@
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
 
 SOURCES = main.c fs.c sync.c
-SOURCES+= lib/bst.c lib/hash.c
-OBJS_NOSYNC = $(SOURCES:%.c=%.o)
-OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
+SOURCES+= lib/bst.c lib/hash.c lib/inodes.c
+# OBJS_NOSYNC = $(SOURCES:%.c=%.o)
+# OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
 OBJS_RWLOCK = $(SOURCES:%.c=%-rwlock.o)
-OBJS = $(OBJS_NOSYNC) $(OBJS_MUTEX) $(OBJS_RWLOCK)
+#OBJS = $(OBJS_NOSYNC) $(OBJS_MUTEX) $(OBJS_RWLOCK)
+OBJS = $(OBJS_RWLOCK)
 CC   = gcc
 LD   = gcc
-CFLAGS =-Wall -std=gnu99 -I../ 
+CFLAGS =-Wall -std=gnu99 -I../ -g
 LDFLAGS=-lm -pthread
-TARGETS = tecnicofs-nosync tecnicofs-mutex tecnicofs-rwlock
+TARGETS = tecnicofs-rwlock
 
 .PHONY: all clean
 
@@ -58,9 +59,12 @@ sync-rwlock.o: sync.c sync.h
 
 lib/hash-rwlock.o: lib/hash.c lib/hash.h
 
+lib/inodes-rwlock.o: lib/inodes.c lib/inodes.h
+
+
 main-rwlock.o: CFLAGS+=-DRWLOCK
-main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h sync.h
-tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o main-rwlock.o lib/hash.o
+main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h lib/inodes.h sync.h
+tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o
 
 
 %.o:

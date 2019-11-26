@@ -200,6 +200,8 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 ## Perguntitas
 * sao precisos locks a volta do produtor?
 * Numero de connections maximo?? (por agora listen(SOMAXCONN))
+* pthread join quando?
+* um cliente que se desligue e volte a ligar deve ficar com o mesmo uid? (passar nome para o programa cliente)
   
 ---
 ### Solucao wait infinito produtor-consumidor

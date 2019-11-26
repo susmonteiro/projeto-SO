@@ -1,10 +1,12 @@
 CC=gcc
-CFLAGS =-Wall -std=gnu99 -I../ 
+CFLAGS=-Wall -std=gnu99 -I../ 
+
+.PHONY: all clean
 
 all: a.out
 
-a.out: ../tecnicofs-client-api.c client-api-test-create.c
-     $(CC) -o a.out client-api-test-create.c ../tecnicofs-client-api.c
+a.out: ../tecnicofs-client-api.c ../tecnicofs-api-constants.h ../tecnicofs-client-api.h client-api-test-create.c
+	$(CC) $(CFLAGS) client-api-test-create.c ../tecnicofs-client-api.c
 
 
 clean:

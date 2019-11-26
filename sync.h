@@ -14,6 +14,7 @@ void initMutex(pthread_mutex_t *mutex);
 void destroyMutex(pthread_mutex_t *mutex);
 void initRWLock(pthread_rwlock_t *rwlock);
 void destroyRWLock(pthread_rwlock_t *rwlock);
+void initCond(pthread_cond_t *cond);
 void initLock(tecnicofs fs);
 void destroyLock(tecnicofs fs);
 void wOpen(tecnicofs fs);
