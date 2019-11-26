@@ -202,6 +202,7 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 * Numero de connections maximo?? (por agora listen(SOMAXCONN))
 * pthread join quando?
 * um cliente que se desligue e volte a ligar deve ficar com o mesmo uid? (passar nome para o programa cliente)
+* tamanho maximo  do comando lido pela api?? ou e' infinito??
   
 ---
 ### Solucao wait infinito produtor-consumidor
@@ -216,6 +217,22 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 
 
 ---
-##Bibliografia
+## Bibliografia
+
 
 - http://retis.sssup.it/~lipari/courses/OS_CP/sockets.pdf
+- https://stackoverflow.com/questions/3719462/sockets-and-threads-using-c
+---
+# Changes
+
+- inicialmente tentei perceber porque e' que o fd estava a mudar a cada iteracao do while
+- e apos uns prints bem localizados cheguei a conclusao que a intrucao nao estava a ser bem recebida da segunda vez
+- entao percebi que ambos os problemas advinham do fdopen (ele e que fica a mandar neste fd e nao o podiamos fechar sem fechar o socket e ao mesmo tempo estavamos sempre a abrir mais um cada vez que a funcao commandCreate era chamada) **TLDR- fdopen gerava um novo fd sempre que chamado**
+- mas se nao podiamos usar o fdopen, como raio iamos usar o getdilem(necessita FILE*).... Entao foi quando tentei o recv para buffer e depois strcpy.
+- passado um tempo cheguei a conclusao que os erros do valgrind era precisamente porque estavamos a copiar para um buffer nao inicializado.... inicializei tudo a '\0' por tentativa. Os erros desapareceram.
+- no entanto no momento da segunda chamada a func create o commando parecia nao ser enviado corretamente (ideia minha) pois davamos print e simplesmente nao aparecia nada, como se estivesse so a dar print do buffer com '\0'. Mas na execucao do strtok ele mostrava o nome do ficheiro a criar e as permissoes.... Algo nao estava certo... entao estavamos ou nao a receber alguma coisa?? tinhamos que estar nao e'? **recv bloqueante**
+- Possivelmente a solucao do strcpy para copiar ate ao \0 nao fosse a melhor... Acabamos por tentar fazer o nosso proprio reader ate ao \0... (daqui vieram alguns seg faults estupidos do meu lado, a tentar fazer print do \0 para ver se chegava la ... *facepalm*)
+- depois de testado apenas com dois creates (com um getchar() do lado do cliente para nao dar exit), o servidor ja nao crasha e o feedback esta certo! **Tudo continua a correr como suposto**
+
+- O primeiro dos erros do valgrind era isto.... (demasiado tempo ate perceber... se calhar voltava a iaed....)
+- malloc(sizeof(char)*strlen(string))....malloc(sizeof(char)*(strlen(string)+**1**))

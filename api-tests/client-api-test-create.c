@@ -16,6 +16,6 @@ int main(int argc, char** argv) {
     printf("==============\n");
     assert(tfsCreate("r", RW, READ) == 0);
     puts("fim");
-
+    getchar(); //nao sair
     return 0;
 }

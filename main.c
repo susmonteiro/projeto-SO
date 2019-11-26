@@ -76,8 +76,10 @@ static void parseArgs (long argc, char* const argv[]){
     } else {
         nameSocket = (char*)malloc(sizeof(char)*(strlen(argv[1])+1));
         strcpy(nameSocket, argv[1]);  // XXX falta \0 ??
-        outputFile = (char*)malloc(sizeof(char)*strlen(argv[2]));
+        outputFile = (char*)malloc(sizeof(char)*(strlen(argv[2])+1));
+        puts(argv[1]);
         strcpy(outputFile, argv[2]);
+
         numberBuckets = atoi(argv[3]);
     }
 
@@ -257,11 +259,9 @@ void processClient(int sockfd){
 void feedback(int sockfd, int msg){
     //DEBUG
     ssize_t size;
-    size_t intsize=sizeof(int*);
-            printf("\nfeed%d\n", sockfd);
+    printf("\nfeed%d\n", sockfd);
 
     if((size = send(sockfd, &msg, sizeof(int*), 0)) != sizeof(int*)) sysError("feedback(write)");
-    printf("%ld %ld %ld\n", sizeof(&msg), intsize, size);
     //puts("feedback");
 }
 //=====================
@@ -283,21 +283,33 @@ float time_taken(struct timeval start, struct timeval end) {
 //Funcoes principais
 //==================
 void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
-    //char *input;
-    //size_t size = MAX_INPUT_SIZE;
-    //FILE *file = fdopen(socketfd, "r");
+    // char *input;
+    // size_t size = MAX_INPUT_SIZE;
+    // FILE *file = fdopen(socketfd, "r");
     char input[MAX_INPUT_SIZE];
-            printf("\n%d\n", socketfd);
+    char c = 'A';
+    int idx = 0;
+    //         printf("\n%d\n", socketfd);
 
-    read(socketfd, input, MAX_INPUT_SIZE);
-    strcpy(command, input);
+    // recv(socketfd, input, MAX_INPUT_SIZE, 0);
+    // printf("input:%s %s %s", input,input+1,input+2);
+    // strcpy(command, input);
     
     
-    puts("parseCommand");
+    // puts("parseCommand");
 
-            printf("\n%d\n", socketfd);
+    //         printf("\n%d\n", socketfd);
 
-    //getdelim(&input, &size, '\0', file);
+
+    // getdelim(&input, &size, '\0', file);
+
+    while(recv(socketfd, &c, 1, 0)){        
+        if(c == '\0'){
+            input[idx] = c;
+            break;
+        }
+        input[idx++] = c;
+    }
 
     int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
     
@@ -311,7 +323,6 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
         exit(EXIT_FAILURE);
     }
 
-                printf("\n%d\n", socketfd);
 
 }
 
@@ -388,5 +399,7 @@ int main(int argc, char* argv[]) {
     print_tree_outfile();                            // imprime o conteudo final da fs para o ficheiro de saida
     
     freeHashTab(numberBuckets);
+    free(nameSocket);
+    free(outputFile);
     exit(EXIT_SUCCESS);
 }

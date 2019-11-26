@@ -21,7 +21,6 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 
     //DEBUG
     ssize_t size1;
-    size_t intsize=sizeof(int*);
 
     if (socketfd == NOT_CONNECTED) return TECNICOFS_ERROR_NO_OPEN_SESSION;
 
@@ -33,12 +32,13 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
     sprintf(str_otherp, "%d", ownerPermissions);
     strcat(command, str_otherp);
     
+    printf("command:%s\n", command);
+
     if(send(socketfd, command, size, 0) != size) sysError("tfsCreate(send)");
     size1 = recv(socketfd, &answer, sizeof(int*), 0);
-    printf("%ld %ld %ld\n", sizeof(answer), intsize, size1);
     if (size1 != sizeof(int*)) sysError("tfsCreate(recv)");
     
-    printf("%d", answer);
+    printf("answer:%d\n", answer);
 
     if (answer == FAIL) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS; 
     return 0;
