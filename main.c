@@ -15,6 +15,8 @@
 //==========
 //Constantes
 //==========
+#define _GNU_SOURCE
+
 #define MAX_INPUT_SIZE 100
 #define MAX_ARGS_INPUTS 2
 #define MILLION 1000000
@@ -24,11 +26,16 @@
 #define END_COMMAND 'z' //Comando criado para terminar as threads
 #define MAX_FILES_OPENED 5
 
+
+typedef struct  {
+    int iNumber;
+    permission open_as; 
+}   tecnicofs_fd;
+
 //=====================
 //Prototipos principais
 //=====================
-void *applyCommands(void * socketFd);
-void processInput(const char *pwd);
+void *clientSession(void * socketfd);
 
 //=================
 //Variaveis Globais
@@ -39,11 +46,8 @@ int numberBuckets = 1;
 int nextINumber = 0;
 
 //Implementa Consumidor de Comandos
-enum state {T_TERMINATED, T_CREATED};
-enum state state_threads[MAXCONNECTIONS]; 
 pthread_t slave_threads[MAXCONNECTIONS];
 int idx = 0;
-int NTerminated = 0;
 
 //Tabela de Arvores de ficheiros
 tecnicofs* hash_tab;
@@ -89,12 +93,6 @@ static void parseArgs (long argc, char* const argv[]){
 //Funcoes de Inicializacao
 //========================
 
-void initThreadState() {
-    int i;
-    for(i = 0; i < MAXCONNECTIONS; i++)
-        state_threads[i] = T_TERMINATED;
-}
-
 //Inicializa memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void initHashTable(int size){
     int i = 0;
@@ -127,7 +125,6 @@ int socketInit() {
 }
 
 int initialize(){
-    initThreadState();
     initHashTable(numberBuckets);
     inode_table_init();
     initMutex(&mutex);
@@ -301,14 +298,10 @@ void processClient(int sockfd){
         
 
         wClosed_rc(&mutex);
-        
-         //procura uma posicao vazia nas threads (caso nao haja fica espera ativa) (nao vai ser mais que o maximo de connections do socket)
-        while(state_threads[idx] == T_CREATED) idx = (idx+1) % MAXCONNECTIONS;
 
-        if(pthread_create(&slave_threads[idx], NULL, applyCommands, (void*) &newsockfd)) sysError("processClient(thread)");
-        //vetor circular
-        state_threads[idx] = T_CREATED; 
-        idx = (idx+1) % MAXCONNECTIONS; 
+        if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
+        idx++; 
+        
         wOpen_rc(&mutex);
 
         puts("prossclient");
@@ -317,7 +310,7 @@ void processClient(int sockfd){
 }
 
 void feedback(int sockfd, int msg){
-    if(send(sockfd, &msg, sizeof(int*), 0) != sizeof(int*)) sysError("feedback(write)");
+    if(send(sockfd, &msg, INT_SIZE, 0) != INT_SIZE) sysError("feedback(write)");
 }
 
 //=====================
@@ -377,13 +370,18 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
 }
 
 //funcao chamada pelas threads consumidoras e trata de executar os comandos do vetor de comandos
-void *applyCommands(void * socketFd){
-    int fd = *((int *)socketFd);
-    int fd_table[MAX_FILES_OPENED] = {-1};
-    uid_t uid;
+void *clientSession(void* socketfd) {
+    int fd = *((int *)socketfd);
+    tecnicofs_fd fd_table[MAX_FILES_OPENED];
+    int i;
+    struct ucred ucredential;
+    int len = sizeof(struct ucred);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
     if(recv(fd, &uid, sizeof(uid_t*), 0) != sizeof(uid_t*)) sysError("applyCommands(recvUid)");
 
-
+    for(i = 0; i < MAX_FILES_OPENED; i++)
+        fd_table->iNumber = -1;
+   
     while(1) { 
         char command;
         char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE];
@@ -409,7 +407,6 @@ void *applyCommands(void * socketFd){
             case END_COMMAND:
                 //antes de sair da funcao applyCommands(), a tarefa atual coloca um novo comando de finalizacao no vetor, 
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
-                NTerminated++;
                 return NULL;
 
             default: { /* error */
@@ -421,9 +418,6 @@ void *applyCommands(void * socketFd){
         feedback(fd, result);
     }
 }
-
-
-
 
 //===========
 //Funcao MAIN

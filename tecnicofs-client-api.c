@@ -23,7 +23,7 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
     printf("\ncommand:%s\n", command);
 
     if (send(socketfd, command, size, 0) != size) sysError("tfsCreate(send)");
-    if (recv(socketfd, &answer, sizeof(int*), 0) != sizeof(int*)) sysError("tfsCreate(recv)");
+    if (recv(socketfd, &answer, INT_SIZE, 0) != INT_SIZE) sysError("tfsCreate(recv)");
     
     printf("answer:%d\n", answer);
 
@@ -42,7 +42,7 @@ int tfsDelete(char *filename){
     printf("\ncommand:%s\n", command);
 
     if (send(socketfd, command, size, 0) != size) sysError("tfsDelete(send)");
-    if (recv(socketfd, &answer, sizeof(int*), 0) != sizeof(int*)) sysError("tfsDelete(recv)");
+    if (recv(socketfd, &answer, INT_SIZE, 0) != INT_SIZE) sysError("tfsDelete(recv)");
 
     printf("answer:%d\n", answer);
 
@@ -61,7 +61,7 @@ int tfsRename(char *filenameOld, char *filenameNew){
     printf("\ncommand:%s\n", command);
 
     if (send(socketfd, command, size, 0) != size) sysError("tfsRename(send)");
-    if (recv(socketfd, &answer, sizeof(int*), 0) != sizeof(int*)) sysError("tfsRename(recv)");
+    if (recv(socketfd, &answer, INT_SIZE, 0) != INT_SIZE) sysError("tfsRename(recv)");
 
     printf("answer:%d\n", answer);
 

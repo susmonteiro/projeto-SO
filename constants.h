@@ -2,7 +2,7 @@
 #define CONSTANTS_H
 
 #define CHAR_SIZE 1
-#define INTPOINTER_SIZE 8
+#define INT_SIZE 4
 
 #define SUCCESS 0
 #define ALREADY_EXISTS -1
