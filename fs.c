@@ -29,7 +29,7 @@ void delete(tecnicofs fs, char *name){
 int lookup(tecnicofs fs, char *name){
 	node* searchNode = search(fs->bstRoot, name);
 	if ( searchNode ) return searchNode->inumber;
-	return 0;
+	return -1;
 }
 
 void print_HashTab_tree(FILE * fp, tecnicofs* hashTab, int size){

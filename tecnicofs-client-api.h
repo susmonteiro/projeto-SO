@@ -7,12 +7,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "tecnicofs-api-constants.h"
+#include "constants.h"
+
 
 #define NOT_CONNECTED -1
 #define PADDING_COMMAND_C 6
-#define SUCCESS 0
-#define FAIL 1
+#define PADDING_COMMAND_D 3
+#define PADDING_COMMAND_R 4
+
 
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions);
 int tfsDelete(char *filename);

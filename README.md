@@ -203,6 +203,7 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 * pthread join quando?
 * um cliente que se desligue e volte a ligar deve ficar com o mesmo uid? (passar nome para o programa cliente)
 * tamanho maximo  do comando lido pela api?? ou e' infinito??
+* preferencia sobre read/write a recv/send?
   
 ---
 ### Solucao wait infinito produtor-consumidor

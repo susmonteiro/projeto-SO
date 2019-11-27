@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "tecnicofs-client-api.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "constants.h": "c"
     }
 }
