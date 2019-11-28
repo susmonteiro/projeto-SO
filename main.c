@@ -10,10 +10,13 @@
 #include "fs.h"
 #include "sync.h"
 #include "lib/inodes.h"
+#include "constants.h"
 
 //==========
 //Constantes
 //==========
+#define _GNU_SOURCE
+
 #define MAX_INPUT_SIZE 100
 #define MAX_ARGS_INPUTS 2
 #define MILLION 1000000
@@ -21,14 +24,18 @@
 #define MAXCONNECTIONS SOMAXCONN
 #define COMMAND_NULL -1 //Comando inexistente
 #define END_COMMAND 'z' //Comando criado para terminar as threads
-#define FAIL 1
-#define SUCCESS 0
+#define MAX_FILES_OPENED 5
+
+
+typedef struct  {
+    int iNumber;
+    permission open_as; 
+}   tecnicofs_fd;
 
 //=====================
 //Prototipos principais
 //=====================
-void *applyCommands(void * socketFd);
-void processInput(const char *pwd);
+void *clientSession(void * socketfd);
 
 //=================
 //Variaveis Globais
@@ -39,11 +46,8 @@ int numberBuckets = 1;
 int nextINumber = 0;
 
 //Implementa Consumidor de Comandos
-enum state {T_CREATED, T_TERMINATED};
-enum state state_threads[MAXCONNECTIONS] = {T_CREATED}; 
 pthread_t slave_threads[MAXCONNECTIONS];
 int idx = 0;
-int NTerminated = 0;
 
 //Tabela de Arvores de ficheiros
 tecnicofs* hash_tab;
@@ -85,10 +89,9 @@ static void parseArgs (long argc, char* const argv[]){
 
 }
 
-
-//=====================
-//Funcoes sobre Arvores
-//=====================
+//========================
+//Funcoes de Inicializacao
+//========================
 
 //Inicializa memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void initHashTable(int size){
@@ -102,6 +105,42 @@ void initHashTable(int size){
 	}
 }
 
+int socketInit() {
+    int sockfd, servlen;
+    struct sockaddr_un serv_addr;
+    if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+        sysError("SocketInit(socket)");
+
+    unlink(nameSocket);
+
+    bzero((char*) &serv_addr, sizeof(serv_addr));
+    serv_addr.sun_family = AF_UNIX;
+    strncpy(serv_addr.sun_path, nameSocket, sizeof(serv_addr.sun_path)-1);
+    servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
+    if(bind(sockfd, (struct sockaddr*) &serv_addr, servlen) < 0)
+        sysError("SocketInit(bind):");
+
+    listen(sockfd, MAXCONNECTIONS);
+    return sockfd;
+}
+
+int initialize(){
+    initHashTable(numberBuckets);
+    inode_table_init();
+    initMutex(&mutex);
+    initCond(&cond);
+    return socketInit(); 
+
+}
+
+
+//================================
+//Funcoes de libertacao de memoria
+//================================
+
+
+
+
 //Liberta memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void freeHashTab(int size){
     int i;
@@ -112,20 +151,42 @@ void freeHashTab(int size){
 	free(hash_tab); //liberta tabela (final)
 }
 
-int commandCreate(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]) {
+
+void liberator(){
+    freeHashTab(numberBuckets);
+    inode_table_destroy();
+    free(nameSocket);
+    free(outputFile);
+}
+//==============================
+//Funcoes relativas aos comandos
+//==============================
+
+int fileLookup(tecnicofs fs, char *filename){
+    int search_result;   //inumber retornado pela funcao lookup
+
+    rClosed(fs);    // permite leituras simultaneas, impede escrita
+    search_result = lookup(fs, filename); //procura por nome, devolve inumber
+    rOpen(fs);
+    return search_result;
+}
+
+
+int commandCreate(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid) {
     int iNumber;
-    int search_result;
     tecnicofs fs = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
     
-    rClosed(fs);
-    search_result = lookup(fs, vec[0]);
-    rOpen(fs);
-    if (search_result != 0) { //se ja existir 
-        return FAIL;
-    }
+    if (fileLookup(fs, vec[0]) != -1)     //se ja existir 
+        return ALREADY_EXISTS;
+
+
+    // sscanf(ownerp, "%d", vec[1][0]);
+    // sscanf(otherp, "%d", vec[1][1]);
+
+    printf("permiss:%d %d\n", atoi(vec[1])/10, atoi(vec[1])%10);
 
     wClosed(fs);    // bloqueia leituras e escritas do fs
-    iNumber = ++nextINumber;
+    iNumber = inode_create(uid, atoi(vec[1])/10, atoi(vec[1])%10);      //FIXME nao deixar isto nojento
     create(fs, vec[0], iNumber);
     wOpen(fs);
 
@@ -135,51 +196,57 @@ int commandCreate(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]) {
     return SUCCESS;
 }
 
-int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
+int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
+    int search_result;
+    uid_t owner;
     tecnicofs fs = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
 
+    if ((search_result = fileLookup(fs, vec[0])) == -1)     //se nao existir
+        return DOESNT_EXIST;
+
+    inode_get(search_result, &owner, NULL, NULL, NULL, 0);
+    if (uid != owner)
+        return PERMISSION_DENIED;
+    
     wClosed(fs);    // bloqueia leituras e escritas do fs
+    printf("seacrhres %d", search_result);
+    inode_delete(search_result);
     delete(fs, vec[0]); 
     wOpen(fs);   
 
     return SUCCESS;
 }
 
-int commandLookup(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
-    int search_result;   //inumber retornado pela funcao lookup
-    tecnicofs fs = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
-
-    rClosed(fs);    // permite leituras simultaneas, impede escrita
-    search_result = lookup(fs, vec[0]); //procura por nome, devolve inumber
-    rOpen(fs);
-    if(!search_result)
-        printf("%s not found\n", vec[0]);
-    else
-        printf("%s found with inumber %d\n", vec[0], search_result);
-
-    return SUCCESS;
-}
 
 //Comando renomear
-int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
+int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 	int search_result;           //inumber retornado pela funcao lookup
+    uid_t owner;
     tecnicofs fs1 = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
     tecnicofs fs2 = hash_tab[searchHash(vec[1], numberBuckets)]; //name2 != null, tal como verificado na funcao applyCommands()
 
 	while (1) {
         
 		if (TryLock(fs2)) {
-			if (lookup(fs2, vec[1])) { //se ja existir, a operacao e' cancelada sem devolver erro
+			if (lookup(fs2, vec[1]) != -1) { //se ja existir, a operacao e' cancelada sem devolver erro
 				Unlock(fs2);
-				break; 
+				return ALREADY_EXISTS;
 			} else if (fs1==fs2 || TryLock(fs1)) {
 
                 // Procurar o ficheiro pelo nome; Se existir [search_result = Inumber do Ficheiro]
-				if ((search_result = lookup(fs1, vec[0])) == 0) {
+				if ((search_result = lookup(fs1, vec[0])) == -1) {
 					Unlock(fs1);
 					if (fs1 != fs2) Unlock(fs2); // nao fazer unlock 2 vezes da mesma arvore
-					break;
+					return DOESNT_EXIST;
 				}
+                // Verifica se nao e' o dono que esta a tentar alterar o nome do ficheiro
+                inode_get(search_result, &owner, NULL, NULL, NULL, 0);
+                if(uid != owner){
+                    Unlock(fs1);
+					if (fs1 != fs2) Unlock(fs2); // nao fazer unlock 2 vezes da mesma arvore
+					return PERMISSION_DENIED;
+                }
+
 
 				delete(fs1, vec[0]);
 				if (fs1 != fs2) Unlock(fs1);
@@ -217,24 +284,7 @@ void print_tree_outfile() {
 //=====================
 //Funcoes sobre sockets
 //=====================
-int socketInit() {
-    int sockfd, servlen;
-    struct sockaddr_un serv_addr;
-    if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
-        sysError("SocketInit(socket)");
 
-    unlink(nameSocket);
-
-    bzero((char*) &serv_addr, sizeof(serv_addr));
-    serv_addr.sun_family = AF_UNIX;
-    strncpy(serv_addr.sun_path, nameSocket, sizeof(serv_addr.sun_path)-1);
-    servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
-    if(bind(sockfd, (struct sockaddr*) &serv_addr, servlen) < 0)
-        sysError("SocketInit(bind):");
-
-    listen(sockfd, MAXCONNECTIONS);
-    return sockfd;
-}
 
 void processClient(int sockfd){
     int newsockfd;
@@ -246,9 +296,12 @@ void processClient(int sockfd){
         newsockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
         if(newsockfd < 0) sysError("processClient(accept)");
         
+
         wClosed_rc(&mutex);
-        if(pthread_create(&slave_threads[idx], NULL, applyCommands, (void*) &newsockfd)) sysError("processClient(thread)");
-        idx++;
+
+        if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
+        idx++; 
+        
         wOpen_rc(&mutex);
 
         puts("prossclient");
@@ -257,13 +310,9 @@ void processClient(int sockfd){
 }
 
 void feedback(int sockfd, int msg){
-    //DEBUG
-    ssize_t size;
-    printf("\nfeed%d\n", sockfd);
-
-    if((size = send(sockfd, &msg, sizeof(int*), 0)) != sizeof(int*)) sysError("feedback(write)");
-    //puts("feedback");
+    if(send(sockfd, &msg, INT_SIZE, 0) != INT_SIZE) sysError("feedback(write)");
 }
+
 //=====================
 //Funcoes sobre tarefas
 //=====================
@@ -279,46 +328,40 @@ float time_taken(struct timeval start, struct timeval end) {
 }
 
 
+
+
 //==================
 //Funcoes principais
 //==================
-void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
-    // char *input;
-    // size_t size = MAX_INPUT_SIZE;
-    // FILE *file = fdopen(socketfd, "r");
-    char input[MAX_INPUT_SIZE];
-    char c = 'A';
+void readCommandfromSocket(int fd, char* buffer){
+    char c;
     int idx = 0;
-    //         printf("\n%d\n", socketfd);
-
-    // recv(socketfd, input, MAX_INPUT_SIZE, 0);
-    // printf("input:%s %s %s", input,input+1,input+2);
-    // strcpy(command, input);
-    
-    
-    // puts("parseCommand");
-
-    //         printf("\n%d\n", socketfd);
-
-
-    // getdelim(&input, &size, '\0', file);
-
-    while(recv(socketfd, &c, 1, 0)){        
+    while(recv(fd, &c, CHAR_SIZE, 0)){        
         if(c == '\0'){
-            input[idx] = c;
+            buffer[idx] = c;
             break;
         }
-        input[idx++] = c;
+        buffer[idx++] = c;
     }
+}
 
-    int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
+void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
+    char input[MAX_INPUT_SIZE];
+
+
+    readCommandfromSocket(socketfd, input);
+
+    printf("\n%s\n", input);
     
+    int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
+    printf("\t%d\n", numTokens);
+
     printf("%c === %s === %s.\n", *command, vec[0], vec[1]);
 
-    if (numTokens > 4 || numTokens < 2) { // qualquer comando que nao tenha 1,2,3 argumentos, e' invalido
+    if (numTokens > 4 || numTokens < 2) { // qualquer comando que nao tenha 2 ou 3 argumentos, e' invalido
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
-    } else if (numTokens == 2 && (*command != END_COMMAND || *command != 'd')) { //teste para caso comando 'x' e 'r' 
+    } else if (numTokens == 2 && !(*command == END_COMMAND || *command == 'd')) { //teste para caso comando 'x' e 'd' 
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
     }
@@ -327,35 +370,35 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
 }
 
 //funcao chamada pelas threads consumidoras e trata de executar os comandos do vetor de comandos
-void *applyCommands(void * socketFd){
-    int fd = *((int *)socketFd);
-    while(1) { //enquanto houver comandos
-        int fd1 = fd;
+void *clientSession(void* socketfd) {
+    int fd = *((int *)socketfd);
+    tecnicofs_fd fd_table[MAX_FILES_OPENED];
+    int i;
+    struct ucred ucredential;
+    int len = sizeof(struct ucred);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
+    if(recv(fd, &uid, sizeof(uid_t*), 0) != sizeof(uid_t*)) sysError("applyCommands(recvUid)");
+
+    for(i = 0; i < MAX_FILES_OPENED; i++)
+        fd_table->iNumber = -1;
+   
+    while(1) { 
         char command;
         char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE];
         int result;
-                printf("ini\n%d\n", fd1);
-
-        parseCommand(fd1, &command, args);
-
-        puts("applyCommand");
-        printf("\n%d\n", fd1);
+        parseCommand(fd, &command, args);
 
         switch (command) {
             case 'c':
-                result = commandCreate(args);
-                break;
-
-            case 'l':
-                result = commandLookup(args);
+                result = commandCreate(args, uid);
                 break;
 
             case 'd':
-                result = commandDelete(args);
+                result = commandDelete(args, uid);
                 break;
 
             case 'r':
-                result = commandRename(args);
+                result = commandRename(args, uid);
                 break;
 
             case 'o':
@@ -364,7 +407,6 @@ void *applyCommands(void * socketFd){
             case END_COMMAND:
                 //antes de sair da funcao applyCommands(), a tarefa atual coloca um novo comando de finalizacao no vetor, 
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
-                NTerminated++;
                 return NULL;
 
             default: { /* error */
@@ -373,13 +415,9 @@ void *applyCommands(void * socketFd){
             }
         }
 
-        feedback(fd1, result);
+        feedback(fd, result);
     }
 }
-
-
-
-
 
 //===========
 //Funcao MAIN
@@ -388,18 +426,12 @@ int main(int argc, char* argv[]) {
     int sockfd;
     parseArgs(argc, argv);                                  // verifica numero de argumentos
 
-    initHashTable(numberBuckets);
-    
-    initMutex(&mutex);
-    initCond(&cond);
-    sockfd = socketInit();                                  // inicializa as tarefas e chama a funcao applyCommands()
+    sockfd = initialize();
     processClient(sockfd);
 
     
     print_tree_outfile();                            // imprime o conteudo final da fs para o ficheiro de saida
     
-    freeHashTab(numberBuckets);
-    free(nameSocket);
-    free(outputFile);
+    liberator();
     exit(EXIT_SUCCESS);
 }

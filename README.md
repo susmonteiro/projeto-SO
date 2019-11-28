@@ -195,13 +195,16 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 - para o sinal ***SIGINT*** usar a funcao *pthread_sigmask*
 - sistema em que corre com semantica BSD
 
+## to-do
+* tabela de descritores de ficheiro: estrutura que da acesso direto ao ficheiro atraves do iNumber e mantem a permissao de abertura do ficheiro
+* interromper o accept: usar ***sigaction***; verificar o erro EINT (sair ordeiramente)
+* as tarefas ignoram o sinal, so o programa principal e que interrompe o accept :)
+* desativar os sinais durante o pthread_create, voltar a permitir logo a seguir
+
 ---
 ## Perguntitas
-* sao precisos locks a volta do produtor?
-* Numero de connections maximo?? (por agora listen(SOMAXCONN))
-* pthread join quando?
-* um cliente que se desligue e volte a ligar deve ficar com o mesmo uid? (passar nome para o programa cliente)
 * tamanho maximo  do comando lido pela api?? ou e' infinito??
+* preferencia sobre read/write a recv/send?
   
 ---
 ### Solucao wait infinito produtor-consumidor
