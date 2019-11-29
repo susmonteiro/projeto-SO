@@ -23,8 +23,7 @@ Desenvolver o servidor do TecnicoFS, composto por uma pool de tarefas escravas. 
  - os processos cliente fazem chamadas ao TecnicoFS enviando mensagens através de um socket
  - nova funcionalidade: salvaguardar o conteudo da diretoria do novo FS num FS externo
 
-#### Etapa Final (não a
-valiada)
+#### Etapa Final (não avaliada)
 Adaptação do projeto para que as chamadas sejam feitas através do api (*Application Program Interface*) e passem pelo Gestor de FS do Sistema Operativo
 
 ---
