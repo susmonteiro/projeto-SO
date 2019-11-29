@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -7,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <signal.h>
 #include "fs.h"
 #include "sync.h"
 #include "lib/inodes.h"
@@ -14,8 +17,7 @@
 
 //==========
 //Constantes
-//==========
-#define _GNU_SOURCE
+//=========+
 
 #define MAX_INPUT_SIZE 100
 #define MAX_ARGS_INPUTS 2
@@ -23,8 +25,8 @@
 #define N_ARGC 4
 #define MAXCONNECTIONS SOMAXCONN
 #define COMMAND_NULL -1 //Comando inexistente
-#define END_COMMAND 'z' //Comando criado para terminar as threads
 #define MAX_FILES_OPENED 5
+#define FD_EMPTY -1
 
 
 typedef struct  {
@@ -36,6 +38,7 @@ typedef struct  {
 //Prototipos principais
 //=====================
 void *clientSession(void * socketfd);
+void endServer();
 
 //=================
 //Variaveis Globais
@@ -52,7 +55,6 @@ int idx = 0;
 //Tabela de Arvores de ficheiros
 tecnicofs* hash_tab;
 pthread_mutex_t mutex;
-pthread_cond_t cond;
 
 
 //================
@@ -92,7 +94,23 @@ static void parseArgs (long argc, char* const argv[]){
 //========================
 //Funcoes de Inicializacao
 //========================
+void blockSigThreads(){
+    //Mascara de signals que queremos bloquear acesso pelas threads
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGINT);
+    if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) sysError("blockSigThreads(pthread_sigmask)");
+}
 
+void initSignal(){
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    sigaddset(&act.sa_mask, SIGINT);    
+    act.sa_sigaction = &endServer;
+    act.sa_flags = SA_SIGINFO;
+
+    if (sigaction(SIGINT, &act, NULL) < 0) sysError("initSignals(sigaction)");
+}
 //Inicializa memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void initHashTable(int size){
     int i = 0;
@@ -118,17 +136,19 @@ int socketInit() {
     strncpy(serv_addr.sun_path, nameSocket, sizeof(serv_addr.sun_path)-1);
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
     if(bind(sockfd, (struct sockaddr*) &serv_addr, servlen) < 0)
-        sysError("SocketInit(bind):");
+        sysError("SocketInit(bind)");
 
     listen(sockfd, MAXCONNECTIONS);
     return sockfd;
 }
 
 int initialize(){
+    initSignal();       
+    //estruturas
     initHashTable(numberBuckets);
     inode_table_init();
+    //
     initMutex(&mutex);
-    initCond(&cond);
     return socketInit(); 
 
 }
@@ -205,6 +225,8 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
         return DOESNT_EXIST;
 
     inode_get(search_result, &owner, NULL, NULL, NULL, 0);
+
+    // confirmar permissao para apagar (apenas consegue apagar o dono)
     if (uid != owner)
         return PERMISSION_DENIED;
     
@@ -213,6 +235,8 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     inode_delete(search_result);
     delete(fs, vec[0]); 
     wOpen(fs);   
+
+    puts("CommandDelete");
 
     return SUCCESS;
 }
@@ -264,8 +288,38 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     return SUCCESS;
 }
 
-int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
-    return SUCCESS;
+int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_fd *file_tab){
+    int search_result, i;
+    permission ownerp, otherp, mode;
+    uid_t user;
+    tecnicofs fs = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
+
+    if ((search_result = fileLookup(fs, vec[0])) == -1)     //se nao existir
+        return DOESNT_EXIST;
+
+    inode_get(search_result, &user, &ownerp, &otherp, NULL, 0);
+
+    mode = atoi(vec[1]);
+    //consideramos que a permissao dos outros nao se aplica ao dono do ficheiro
+    if(!((user==uid && (mode&ownerp) == mode) || (user!=uid && (mode&otherp) == mode))){
+        // printf("user %d | uid %d | mod %d | ownerp %d | otherp %d \n\t1and %d ==== 2and %d\n",user, uid, mode, ownerp, otherp, mode&ownerp, mode&otherp);
+        // puts("nao criado");
+        return PERMISSION_DENIED;
+    }
+    
+    i = 0;
+    while (file_tab[i++].iNumber != FD_EMPTY) { 
+        if (i == MAXCONNECTIONS)
+            return MAX_OPENED_FILES;
+    }
+    
+    file_tab[i].iNumber = search_result;
+    file_tab[i].open_as = mode;
+
+    puts("CommandOpen");
+
+    printf("%d\n", file_tab[i].iNumber);
+    return file_tab[i].iNumber;
 }
 
 /* Abre o ficheiro de output e escreve neste a arvore */
@@ -286,6 +340,7 @@ void print_tree_outfile() {
 //=====================
 
 
+
 void processClient(int sockfd){
     int newsockfd;
     socklen_t clilen;
@@ -298,7 +353,8 @@ void processClient(int sockfd){
         
 
         wClosed_rc(&mutex);
-
+        //Confirma espaco para aceitar
+        if(idx == MAXCONNECTIONS) endServer();
         if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
         idx++; 
         
@@ -310,7 +366,7 @@ void processClient(int sockfd){
 }
 
 void feedback(int sockfd, int msg){
-    if(send(sockfd, &msg, INT_SIZE, 0) != INT_SIZE) sysError("feedback(write)");
+    if(write(sockfd, &msg, INT_SIZE) != INT_SIZE) sysError("feedback(write)");
 }
 
 //=====================
@@ -328,6 +384,16 @@ float time_taken(struct timeval start, struct timeval end) {
 }
 
 
+void endServer(){
+    int i;
+    for(i = 0; i < idx; i++)
+        if(pthread_join(slave_threads[i], NULL)) sysError("endServer(pthread_join)");
+
+    print_tree_outfile();                            // imprime o conteudo final da fs para o ficheiro de saida
+    liberator();                                     // liberta a memoria alocada ao longo do programa
+    
+    exit(EXIT_SUCCESS);
+}
 
 
 //==================
@@ -336,78 +402,104 @@ float time_taken(struct timeval start, struct timeval end) {
 void readCommandfromSocket(int fd, char* buffer){
     char c;
     int idx = 0;
-    while(recv(fd, &c, CHAR_SIZE, 0)){        
+    puts("mais uma voltinha mais uma viagem");
+
+    size_t size = read(fd, &c, CHAR_SIZE);
+    printf("%ld\n", size);
+    puts("ola");
+    while(size){   
+        puts(";");     
+        printf("%x\tidx;%d\n", c, idx);
         if(c == '\0'){
             buffer[idx] = c;
             break;
         }
         buffer[idx++] = c;
+        size = read(fd, &c, CHAR_SIZE);
     }
+    puts("adeus");
+
 }
 
 void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
     char input[MAX_INPUT_SIZE];
 
-
     readCommandfromSocket(socketfd, input);
 
     printf("\n%s\n", input);
-    
+
+    puts("sscanf do parse");
     int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
     printf("\t%d\n", numTokens);
 
     printf("%c === %s === %s.\n", *command, vec[0], vec[1]);
 
-    if (numTokens > 4 || numTokens < 2) { // qualquer comando que nao tenha 2 ou 3 argumentos, e' invalido
+    if (numTokens > 4 || numTokens < 1) { // qualquer comando que nao tenha 2 ou 3 argumentos, e' invalido
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
-    } else if (numTokens == 2 && !(*command == END_COMMAND || *command == 'd')) { //teste para caso comando 'x' e 'd' 
+    } else if ((numTokens == 1 && *command != END_COMMAND) || (numTokens == 2 && *command != DELETE_COMMAND)) { //teste para caso comando 'x' e 'd' 
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
     }
 
 
 }
+
+uid_t getSockUID(int fd){
+    struct ucred u_cred;
+    socklen_t len = sizeof(struct ucred);
+    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &u_cred, &len) == -1) sysError("clientSession(getsockopt)");
+    return u_cred.uid;
+}
+
 
 //funcao chamada pelas threads consumidoras e trata de executar os comandos do vetor de comandos
 void *clientSession(void* socketfd) {
     int fd = *((int *)socketfd);
     tecnicofs_fd fd_table[MAX_FILES_OPENED];
     int i;
-    struct ucred ucredential;
-    int len = sizeof(struct ucred);
-    if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1)
-    if(recv(fd, &uid, sizeof(uid_t*), 0) != sizeof(uid_t*)) sysError("applyCommands(recvUid)");
 
+    //UID do cliente
+    uid_t uid;
+    uid = getSockUID(fd);
+
+    //Bloqueia a interrupcao(signal)
+    //Mascara de signals que queremos bloquear acesso pelas threads
+    blockSigThreads();
+
+    //inicializa tabela de descritores de ficheiros
     for(i = 0; i < MAX_FILES_OPENED; i++)
-        fd_table->iNumber = -1;
+        fd_table->iNumber = FD_EMPTY;
    
     while(1) { 
         char command;
         char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE];
         int result;
+
         parseCommand(fd, &command, args);
 
         switch (command) {
-            case 'c':
+            case CREATE_COMMAND:
                 result = commandCreate(args, uid);
                 break;
 
-            case 'd':
+            case DELETE_COMMAND:
                 result = commandDelete(args, uid);
                 break;
 
-            case 'r':
+            case RENAME_COMMAND:
                 result = commandRename(args, uid);
                 break;
 
-            case 'o':
-                result = commandOpen(args);
+            case OPEN_COMMAND:
+                result = commandOpen(args, uid, fd_table);
+                break;
 
             case END_COMMAND:
                 //antes de sair da funcao applyCommands(), a tarefa atual coloca um novo comando de finalizacao no vetor, 
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
-                return NULL;
+                if(close(fd) == -1) sysError("clientSession(close)");
+                pthread_exit(NULL);
 
             default: { /* error */
                 fprintf(stderr, "Error: command to apply\n");
@@ -424,14 +516,11 @@ void *clientSession(void* socketfd) {
 //===========
 int main(int argc, char* argv[]) {
     int sockfd;
+    
     parseArgs(argc, argv);                                  // verifica numero de argumentos
 
     sockfd = initialize();
     processClient(sockfd);
 
-    
-    print_tree_outfile();                            // imprime o conteudo final da fs para o ficheiro de saida
-    
-    liberator();
     exit(EXIT_SUCCESS);
 }
