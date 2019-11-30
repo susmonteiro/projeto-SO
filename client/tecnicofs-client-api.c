@@ -74,8 +74,9 @@ int tfsRename(char *filenameOld, char *filenameNew){
 
     CHECK_CONNECTED();
 
+    if(!filenameNew || !filenameOld) return TECNICOFS_ERROR_OTHER;
 
-    if (sprintf(command, "%c %s %s", RENAME_COMMAND, filenameOld, filenameNew), size-1) sysError("tfsRename(sprintf)");
+    if (sprintf(command, "%c %s %s", RENAME_COMMAND, filenameOld, filenameNew) != size-1) sysError("tfsRename(sprintf)");
 
     printf("\ncommand:%s\n", command);
 
@@ -154,6 +155,7 @@ int tfsRead(int fd, char *buffer, int len){
     char command[size];
     int answer;
 
+
     //check enough space in buffer
     if (len < 0) return TECNICOFS_ERROR_OTHER; 
     // if (sizeof(buffer) <= len) {
@@ -180,7 +182,8 @@ int tfsRead(int fd, char *buffer, int len){
 
     if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
     if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
-
+    if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_INVALID_MODE;
+    
     return answer; 
 }
 

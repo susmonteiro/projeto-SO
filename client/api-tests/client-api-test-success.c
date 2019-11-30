@@ -9,6 +9,7 @@ int main(int argc, char** argv) {
         printf("Usage: %s sock_path\n", argv[0]);
         exit(0);
     }
+    //
     
     char readBuffer[4] = {0};
 

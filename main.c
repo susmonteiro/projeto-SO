@@ -470,14 +470,11 @@ void endServer(){
 void readCommandfromSocket(int fd, char* buffer){
     char c;
     int idx = 0;
-    puts("EU ESTOU A TENTAR LER DO SOCKET");
+    puts("ReadCommandfromSocket");
 
     size_t size = read(fd, &c, CHAR_SIZE);
     printf("%ld\n", size);
-    puts("ola");
     while(size){   
-        puts(";");     
-        printf("%x\tidx;%d\n", c, idx);
         if(c == '\0'){
             buffer[idx] = c;
             break;
@@ -485,7 +482,6 @@ void readCommandfromSocket(int fd, char* buffer){
         buffer[idx++] = c;
         size = read(fd, &c, CHAR_SIZE);
     }
-    puts("adeus");
 
 }
 
