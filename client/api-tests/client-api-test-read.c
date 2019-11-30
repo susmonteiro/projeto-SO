@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
     
     printf("Test: read with buffer bigger than file content");
     memset(readBuffer, 0, 10*sizeof(char));
-    // assert(tfsRead(fd, readBuffer, 10) == 5);
-    printf("%d", tfsRead(fd, readBuffer, 10));
+    assert(tfsRead(fd, readBuffer, 10) == 5);
+    // printf("\n%d\n", tfsRead(fd, readBuffer, 10));
     printf("Content read: %s\n", readBuffer);
 
     // assert(tfsClose(fd) == 0);

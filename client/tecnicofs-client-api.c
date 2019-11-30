@@ -145,9 +145,10 @@ int tfsClose(int fd){
 
 
 int tfsRead(int fd, char *buffer, int len){
-    int actual_buffer_len = len - 1; //uma string comeca na posicao 0
+    // int actual_buffer_len = len - 1; //uma string comeca na posicao 0
     int fd_size = snprintf(NULL, 0, "%d", fd); 
-    int len_size = snprintf(NULL, 0, "%d", actual_buffer_len); 
+    // int len_size = snprintf(NULL, 0, "%d", actual_buffer_len); 
+    int len_size = snprintf(NULL, 0, "%d", len); 
 
     int size = fd_size + len_size + PADDING_COMMAND_L;
     char command[size];
@@ -155,14 +156,14 @@ int tfsRead(int fd, char *buffer, int len){
 
     //check enough space in buffer
     if (len < 0) return TECNICOFS_ERROR_OTHER; 
-    if (sizeof(buffer) <= len) {
-        printf("%ld", sizeof(buffer));
-        return TECNICOFS_ERROR_OTHER;
-    }
+    // if (sizeof(buffer) <= len) {
+    //     printf("\n\t%ld", sizeof(buffer));
+    //     return TECNICOFS_ERROR_OTHER;
+    // }
 
     CHECK_CONNECTED();
 
-    if (sprintf(command, "%c %d %d", READ_COMMAND, fd, actual_buffer_len) != size-1) sysError("tfsRead(sprintf)");
+    if (sprintf(command, "%c %d %d", READ_COMMAND, fd, len) != size-1) sysError("tfsRead(sprintf)");
 
     printf("\ncommaSnd:%s\n", command);
 
@@ -173,8 +174,8 @@ int tfsRead(int fd, char *buffer, int len){
 
     printf("answer:%d\n", answer);
 
-    if(answer >= 0) //se positivo igual a numero de caracteres lidos
-        if(read(sockfd, buffer, answer) != answer) sysError("tfsRead(readBuffer)");
+    if(answer >= 0) //se positivo igual a numero de caracteres lidos excepto o \0 dai o answer+1
+        if(read(sockfd, buffer, answer+1) != answer+1) sysError("tfsRead(readBuffer)");
 
 
     if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 

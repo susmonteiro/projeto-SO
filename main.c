@@ -61,6 +61,9 @@ int idx = 0;
 tecnicofs* hash_tab;
 pthread_mutex_t mutex;
 
+int sockfd;
+
+
 
 //================
 //Funcoes de parse
@@ -177,6 +180,7 @@ void freeHashTab(int size){
 
 
 void liberator(){
+    close(sockfd);
     freeHashTab(numberBuckets);
     inode_table_destroy();
     free(nameSocket);
@@ -342,9 +346,9 @@ int commandClose(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_t
 void commandRead(int fd, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_tab){
     // confirmar input
     int tab_idx = atoi(vec[0]);
-    int len = atoi(vec[1]);
+    int buffer_len = atoi(vec[1]); 
     tecnicofs_fd file;
-    char buffer[len];
+    char buffer[buffer_len];
     int msg = SUCCESS;
     if(tab_idx < 0 || tab_idx > MAX_FILES_OPENED) msg = INDEX_OUT_OF_RANGE;
 
@@ -355,14 +359,18 @@ void commandRead(int fd, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd
     //ler apenas em caso de sucesso
     if(msg == SUCCESS)
     //If the length of src is less than n, strncpy() writes additional null bytes to dest to ensure that a total of n bytes are  writ‐ten.
-        msg = inode_get(file.iNumber, NULL, NULL, NULL, buffer, len);
+        msg = inode_get(file.iNumber, NULL, NULL, NULL, buffer, buffer_len-1); // buffer comeca em idx 0, -1 cuida do offset
         // msg passa a ser o numero de caracteres lidos
     
     feedback(fd, msg); //informar de possivel erro
     printf("%d\n", msg);
     if(msg > 0){ // caso a msg nao seja erro
+
+        // O TAMANHO MSG NAO INCLUI O \O!!!!!!!! STRLEN
+
         printf("conteudo do bugger: %s\n", buffer);
-        if (write(fd, buffer, msg) != msg) sysError("commandRead(write)");
+        // +1 PARA INCLUIR O \0
+        if (write(fd, buffer, msg+1) != msg+1) sysError("commandRead(write)");
     }
 
 }
@@ -584,7 +592,6 @@ void *clientSession(void* socketfd) {
 //Funcao MAIN
 //===========
 int main(int argc, char* argv[]) {
-    int sockfd;
     
     parseArgs(argc, argv);                                  // verifica numero de argumentos
 
