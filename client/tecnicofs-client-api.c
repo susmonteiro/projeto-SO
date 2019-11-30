@@ -1,10 +1,10 @@
 #include "tecnicofs-client-api.h"
 
-#define CHECK_CONNECTED() if (fd == NOT_CONNECTED) return TECNICOFS_ERROR_NO_OPEN_SESSION
-#define CHECK_NOT_CONNECTED() if(fd != NOT_CONNECTED) return TECNICOFS_ERROR_OPEN_SESSION
+#define CHECK_CONNECTED() if (sockfd == NOT_CONNECTED) return TECNICOFS_ERROR_NO_OPEN_SESSION
+#define CHECK_NOT_CONNECTED() if(sockfd != NOT_CONNECTED) return TECNICOFS_ERROR_OPEN_SESSION
 
 int inSession = 0;
-int fd = NOT_CONNECTED;
+int sockfd = NOT_CONNECTED;
 
 void sysError(const char* msg) {
     perror(msg);
@@ -28,14 +28,14 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 
     CHECK_CONNECTED();
 
-    sprintf(command, "%c %s %d%d", CREATE_COMMAND, filename, ownerPermissions, othersPermissions);
+    if (sprintf(command, "%c %s %d%d", CREATE_COMMAND, filename, ownerPermissions, othersPermissions) != size-1) sysError("tfsCreate(sprintf)");
     
     printf("\ncommand:%s\n", command);
 
     // escreve o comando
-    if (write(fd, command, size) != size) sysError("tfsCreate(write)");
+    if (write(sockfd, command, size) != size) sysError("tfsCreate(write)");
     // le resposta ao comando
-    if (read(fd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsCreate(read)");
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsCreate(read)");
     
     printf("answer:%d\n", answer);
 
@@ -51,14 +51,14 @@ int tfsDelete(char *filename){
 
     CHECK_CONNECTED();
 
-    sprintf(command, "%c %s", DELETE_COMMAND, filename);
+    if (sprintf(command, "%c %s", DELETE_COMMAND, filename) != size-1) sysError("tfsDelete(sprintf)");
 
     printf("\ncommand:%s\n", command);
 
     // escreve o comando
-    if (write(fd, command, size) != size) sysError("tfsDelete(write)");
+    if (write(sockfd, command, size) != size) sysError("tfsDelete(write)");
     // le resposta ao comando
-    if (read(fd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsDelete(read)");
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsDelete(read)");
 
     printf("answer:%d\n", answer);
 
@@ -75,14 +75,14 @@ int tfsRename(char *filenameOld, char *filenameNew){
     CHECK_CONNECTED();
 
 
-    sprintf(command, "%c %s %s", RENAME_COMMAND, filenameOld, filenameNew);
+    if (sprintf(command, "%c %s %s", RENAME_COMMAND, filenameOld, filenameNew), size-1) sysError("tfsRename(sprintf)");
 
     printf("\ncommand:%s\n", command);
 
     // escreve o comando
-    if (write(fd, command, size) != size) sysError("tfsRename(write)");
+    if (write(sockfd, command, size) != size) sysError("tfsRename(write)");
     // le resposta ao comando
-    if (read(fd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsRename(read)");
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsRename(read)");
 
     printf("answer:%d\n", answer);
 
@@ -101,14 +101,14 @@ int tfsOpen(char *filename, permission mode){
 
     CHECK_CONNECTED();
 
-    sprintf(command, "%c %s %d", OPEN_COMMAND, filename, mode);
+    if (sprintf(command, "%c %s %d", OPEN_COMMAND, filename, mode) != size-1) sysError("tfsOpen(sprintf)");
     
     printf("\ncommand:%s\n", command);
 
     // escreve o comando
-    if (write(fd, command, size) != size) sysError("tfsOpen(write)");
+    if (write(sockfd, command, size) != size) sysError("tfsOpen(write)");
     // le resposta ao comando
-    if (read(fd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsOpen(read)");
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsOpen(read)");
     printf("answer:%d\n", answer);
 
     if (answer == DOESNT_EXIST) return TECNICOFS_ERROR_FILE_NOT_FOUND; 
@@ -118,9 +118,103 @@ int tfsOpen(char *filename, permission mode){
     return answer;
 }
 
-int tfsClose(int fd){return SUCCESS;}
-int tfsRead(int fd, char *buffer, int len){return SUCCESS;}
-int tfsWrite(int fd, char *buffer, int len){return SUCCESS;}
+int tfsClose(int fd){
+    int size_fd = snprintf(NULL, 0, "%d", fd);
+    int size = size_fd + PADDING_COMMAND_X;
+    char command[size];
+    int answer;
+
+    CHECK_CONNECTED();
+
+    if (sprintf(command, "%c %d", CLOSE_COMMAND, fd) != size-1) sysError("tfsClose(sprintf)");
+
+    printf("\ncommaSnd:%s\n", command);
+
+    // escreve o comando
+    if (write(sockfd, command, size) != size) sysError("tfsClose(write)");
+    // le resposta ao comando
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsClose(read)");
+
+    printf("answer:%d\n", answer);
+
+    if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
+    if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
+
+    return SUCCESS;
+}
+
+
+int tfsRead(int fd, char *buffer, int len){
+    int actual_buffer_len = len - 1; //uma string comeca na posicao 0
+    int fd_size = snprintf(NULL, 0, "%d", fd); 
+    int len_size = snprintf(NULL, 0, "%d", actual_buffer_len); 
+
+    int size = fd_size + len_size + PADDING_COMMAND_L;
+    char command[size];
+    int answer;
+
+    //check enough space in buffer
+    if (len < 0) return TECNICOFS_ERROR_OTHER; 
+    if (sizeof(buffer) <= len) {
+        printf("%ld", sizeof(buffer));
+        return TECNICOFS_ERROR_OTHER;
+    }
+
+    CHECK_CONNECTED();
+
+    if (sprintf(command, "%c %d %d", READ_COMMAND, fd, actual_buffer_len) != size-1) sysError("tfsRead(sprintf)");
+
+    printf("\ncommaSnd:%s\n", command);
+
+    // escreve o comando
+    if (write(sockfd, command, size) != size) sysError("tfsRead(write)");
+    // le resposta ao comando
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsRead(readAnswer)");
+
+    printf("answer:%d\n", answer);
+
+    if(answer >= 0) //se positivo igual a numero de caracteres lidos
+        if(read(sockfd, buffer, answer) != answer) sysError("tfsRead(readBuffer)");
+
+
+    if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
+    if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
+
+    return answer; 
+}
+
+int tfsWrite(int fd, char *buffer, int len){
+    int fd_size = snprintf(NULL, 0, "%d", fd); 
+    int size = fd_size + strlen(buffer) + PADDING_COMMAND_W;
+    char command[size];
+    int answer;
+
+    //check enough space in buffer
+    if (len < 0) return TECNICOFS_ERROR_OTHER; 
+    if (strlen(buffer) > len) return TECNICOFS_ERROR_OTHER;
+
+    CHECK_CONNECTED();
+
+    //  PASSAR SO BUFFER ATE LEN????
+
+    if (sprintf(command, "%c %d %s", WRITE_COMMAND, fd, buffer) != size-1) sysError("tfsWrite(sprintf)");
+
+    printf("\ncommaSnd:%s\n", command);
+
+    // escreve o comando
+    if (write(sockfd, command, size) != size) sysError("tfsWrite(write)");
+    // le resposta ao comando
+    if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsWrite(read)");
+
+    printf("answer:%d\n", answer);
+
+    if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
+    if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
+
+
+    return answer; 
+
+}
 
 int tfsMount(char * address){
     int servlen;
@@ -128,7 +222,7 @@ int tfsMount(char * address){
 
     CHECK_NOT_CONNECTED();
 
-    if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+    if((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         sysError("tfsMount(socket)");
 
 
@@ -137,7 +231,7 @@ int tfsMount(char * address){
     strncpy(serv_addr.sun_path, address, sizeof(serv_addr.sun_path)-1);
     servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
     
-    if(connect(fd, (struct sockaddr*) &serv_addr, servlen) < 0)
+    if(connect(sockfd, (struct sockaddr*) &serv_addr, servlen) < 0)
         return TECNICOFS_ERROR_CONNECTION_ERROR;
 
     return SUCCESS;
@@ -149,14 +243,14 @@ int tfsUnmount(){
     
     CHECK_CONNECTED();
 
-    sprintf(command, "%c", END_COMMAND);
-
+    if (sprintf(command, "%c", END_COMMAND) != size-1) sysError("tfsUnmount(sprintf)");
+    
     // escreve o comando
-    if (write(fd, command, size) != size) sysError("tfsUnmount(write)");
+    if (write(sockfd, command, size) != size) sysError("tfsUnmount(write)");
     // le resposta ao comando
-    if(close(fd) == -1) sysError("tfsUnmount(close)");
+    if(close(sockfd) == -1) sysError("tfsUnmount(close)");
 
-    fd = NOT_CONNECTED;
+    sockfd = NOT_CONNECTED;
 
     return SUCCESS;
 }

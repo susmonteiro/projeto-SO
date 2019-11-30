@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <string.h>
 
 int main() {
-    size_t oito;
-    int fd = fopen("tmp1","r");
-    int size = recv(fd, &oito, sizeof(int*), 0);
-    printf("%d %d", oito, size);
-    if (oito == size) printf("it works");
+    char buffer[0];
+    printf("%d\n", sizeof(buffer));
+    buffer[0]='\0';
+    // strcpy(buffer, '\0');
     return 0;
 }

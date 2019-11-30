@@ -10,6 +10,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 #include "fs.h"
 #include "sync.h"
 #include "lib/inodes.h"
@@ -28,6 +29,9 @@
 #define MAX_FILES_OPENED 5
 #define FD_EMPTY -1
 
+#define CAN_READ(file_permission) file_permission & READ 
+#define CAN_WRITE(file_permission) file_permission & WRITE 
+
 
 typedef struct  {
     int iNumber;
@@ -39,6 +43,7 @@ typedef struct  {
 //=====================
 void *clientSession(void * socketfd);
 void endServer();
+void feedback(int sockfd, int msg);
 
 //=================
 //Variaveis Globais
@@ -80,13 +85,12 @@ static void parseArgs (long argc, char* const argv[]){
         fprintf(stderr, "Invalid format:\n");
         displayUsage(argv[0]);
     } else {
-        nameSocket = (char*)malloc(sizeof(char)*(strlen(argv[1])+1));
+        if((nameSocket = (char*)malloc(sizeof(char)*(strlen(argv[1])+1))) == NULL) sysError("parseArgs(malloc)");
         strcpy(nameSocket, argv[1]);  // XXX falta \0 ??
-        outputFile = (char*)malloc(sizeof(char)*(strlen(argv[2])+1));
-        puts(argv[1]);
+        if ((outputFile = (char*)malloc(sizeof(char)*(strlen(argv[2])+1))) == NULL) sysError("parseArgs(malloc)");
         strcpy(outputFile, argv[2]);
 
-        numberBuckets = atoi(argv[3]);
+        if((numberBuckets = atoi(argv[3])) < 1) sysError("parseArgs(numBucketsNonPositive)");
     }
 
 }
@@ -289,7 +293,7 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 }
 
 int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_fd *file_tab){
-    int search_result, i;
+    int search_result, idx_fd;
     permission ownerp, otherp, mode;
     uid_t user;
     tecnicofs fs = hash_tab[searchHash(vec[0], numberBuckets)]; //arvore do nome atual
@@ -307,19 +311,74 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
         return PERMISSION_DENIED;
     }
     
-    i = 0;
-    while (file_tab[i++].iNumber != FD_EMPTY) { 
-        if (i == MAXCONNECTIONS)
+    idx_fd = -1;
+    while (file_tab[++idx_fd].iNumber != FD_EMPTY)
+        if (idx_fd == MAX_FILES_OPENED)
             return MAX_OPENED_FILES;
-    }
     
-    file_tab[i].iNumber = search_result;
-    file_tab[i].open_as = mode;
+    
+    file_tab[idx_fd].iNumber = search_result;
+    file_tab[idx_fd].open_as = mode;
 
     puts("CommandOpen");
 
-    printf("%d\n", file_tab[i].iNumber);
-    return file_tab[i].iNumber;
+    printf("%d\n", file_tab[idx_fd].iNumber);
+    return idx_fd;
+}
+
+int commandClose(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_tab){
+    int idx_fd = atoi(vec[0]);
+
+    if (idx_fd < 0 || idx_fd > 4) return INDEX_OUT_OF_RANGE;
+
+    if (file_tab[idx_fd].iNumber == FD_EMPTY) return NOT_OPENED;
+
+    file_tab[idx_fd].iNumber = FD_EMPTY;
+
+    puts("commandClose");
+    return SUCCESS;
+}
+
+void commandRead(int fd, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_tab){
+    // confirmar input
+    int tab_idx = atoi(vec[0]);
+    int len = atoi(vec[1]);
+    tecnicofs_fd file;
+    char buffer[len];
+    int msg = SUCCESS;
+    if(tab_idx < 0 || tab_idx > MAX_FILES_OPENED) msg = INDEX_OUT_OF_RANGE;
+
+    file = file_tab[tab_idx];
+    if (file.iNumber == FD_EMPTY) msg = NOT_OPENED;
+    if (!(CAN_READ(file.open_as))) msg = PERMISSION_DENIED;
+    
+    //ler apenas em caso de sucesso
+    if(msg == SUCCESS)
+    //If the length of src is less than n, strncpy() writes additional null bytes to dest to ensure that a total of n bytes are  writ‐ten.
+        msg = inode_get(file.iNumber, NULL, NULL, NULL, buffer, len);
+        // msg passa a ser o numero de caracteres lidos
+    
+    feedback(fd, msg); //informar de possivel erro
+    printf("%d\n", msg);
+    if(msg > 0){ // caso a msg nao seja erro
+        printf("conteudo do bugger: %s\n", buffer);
+        if (write(fd, buffer, msg) != msg) sysError("commandRead(write)");
+    }
+
+}
+
+int commandWrite(int fd, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_tab){
+    int tab_idx = atoi(vec[0]);
+    tecnicofs_fd file;
+    if(tab_idx < 0 || tab_idx > MAX_FILES_OPENED) return INDEX_OUT_OF_RANGE;
+
+    file = file_tab[tab_idx];
+    if (file.iNumber == FD_EMPTY) return NOT_OPENED;
+    if (!(CAN_WRITE(file.open_as))) return PERMISSION_DENIED;
+    
+    puts("commandWrite");
+
+    return inode_set(file.iNumber, vec[1], strlen(vec[1]));
 }
 
 /* Abre o ficheiro de output e escreve neste a arvore */
@@ -337,7 +396,7 @@ void print_tree_outfile() {
 
 //=====================
 //Funcoes sobre sockets
-//=====================
+//=====================0
 
 
 
@@ -366,6 +425,7 @@ void processClient(int sockfd){
 }
 
 void feedback(int sockfd, int msg){
+    if(msg == INT_MIN) return;
     if(write(sockfd, &msg, INT_SIZE) != INT_SIZE) sysError("feedback(write)");
 }
 
@@ -402,7 +462,7 @@ void endServer(){
 void readCommandfromSocket(int fd, char* buffer){
     char c;
     int idx = 0;
-    puts("mais uma voltinha mais uma viagem");
+    puts("EU ESTOU A TENTAR LER DO SOCKET");
 
     size_t size = read(fd, &c, CHAR_SIZE);
     printf("%ld\n", size);
@@ -426,8 +486,6 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
 
     readCommandfromSocket(socketfd, input);
 
-    printf("\n%s\n", input);
-
     puts("sscanf do parse");
     int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
     printf("\t%d\n", numTokens);
@@ -437,7 +495,7 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
     if (numTokens > 4 || numTokens < 1) { // qualquer comando que nao tenha 2 ou 3 argumentos, e' invalido
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
-    } else if ((numTokens == 1 && *command != END_COMMAND) || (numTokens == 2 && *command != DELETE_COMMAND)) { //teste para caso comando 'x' e 'd' 
+    } else if ((numTokens == 1 && *command != END_COMMAND) || (numTokens == 2 && *command != DELETE_COMMAND && *command != CLOSE_COMMAND)) { //teste para caso comando 'x' ,'z', 'd' 
         fprintf(stderr, "Error: invalid command in Queue\n");
         exit(EXIT_FAILURE);
     }
@@ -469,12 +527,12 @@ void *clientSession(void* socketfd) {
 
     //inicializa tabela de descritores de ficheiros
     for(i = 0; i < MAX_FILES_OPENED; i++)
-        fd_table->iNumber = FD_EMPTY;
+        fd_table[i].iNumber = FD_EMPTY;
    
     while(1) { 
         char command;
         char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE];
-        int result;
+        int result = INT_MIN;
 
         parseCommand(fd, &command, args);
 
@@ -493,6 +551,17 @@ void *clientSession(void* socketfd) {
 
             case OPEN_COMMAND:
                 result = commandOpen(args, uid, fd_table);
+                break;
+
+            case CLOSE_COMMAND:
+                result = commandClose(args, fd_table);
+                break;
+            case READ_COMMAND:
+                commandRead(fd, args, fd_table);
+                break;
+
+            case WRITE_COMMAND:
+                result = commandWrite(fd, args, fd_table);
                 break;
 
             case END_COMMAND:
