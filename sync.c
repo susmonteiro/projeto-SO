@@ -122,35 +122,11 @@ void openLock(lock l) {
 }
 
 
-int TryLock(tecnicofs fs) {
+int TryLock(lock l) {
     #if defined(MUTEX)
-        return !pthread_mutex_trylock(&fs->tecnicofs_lock.mutex);
+        return !pthread_mutex_trylock(&l.mutex);
     #elif RWLOCK
-        return !pthread_rwlock_trywrlock(&fs->tecnicofs_lock.rwlock);
+        return !pthread_rwlock_trywrlock(&l.rwlock);
     #endif
         return 1; // para nosync, nunca se faz o lock 
-}
-
-void Unlock(tecnicofs fs) {
-    #if defined(MUTEX)
-        pthread_mutex_unlock(&fs->tecnicofs_lock.mutex);
-    #elif RWLOCK
-        pthread_rwlock_unlock(&fs->tecnicofs_lock.rwlock);
-    #endif
-}
-
-void create_semaforo(sem_t *sem, int initVal){
-    if (sem_init(sem, 0, initVal)) errnoPrint();
-}
-
-void delete_semaforo(sem_t *sem){
-    if(sem_destroy(sem)) errnoPrint();
-}
-
-void esperar(sem_t *sem) {
-    if (sem_wait(sem)) errnoPrint();
-}
-
-void assinalar(sem_t *sem) {
-    if (sem_post(sem)) errnoPrint();
 }

@@ -24,12 +24,7 @@ void openLock(lock l);
 /* void fsCloseWriteLock(tecnicofs fs); 
 void fsCloseReadLock(tecnicofs fs); 
 void fsOpenLock(tecnicofs fs);  */
-int TryLock(tecnicofs fs);
-void Unlock(tecnicofs fs); 
-void create_semaforo(sem_t *sem, int initVal);
-void delete_semaforo(sem_t *sem);
-void esperar(sem_t *sem);
-void assinalar(sem_t *sem);
-
+int TryLock(lock l);
+void Unlock(lock l); 
 
 #endif /* SYNC_H */

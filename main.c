@@ -176,9 +176,6 @@ int initialize(){
 //Funcoes de libertacao de memoria
 //================================
 
-
-
-
 //Liberta memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void freeHashTab(int size){
     int i;
@@ -275,37 +272,37 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 
 	while (1) {
         
-		if (TryLock(fs2)) {
+		if (TryLock(fs2->tecnicofs_lock)) {
 			if (lookup(fs2, vec[1]) != -1) { //se ja existir, a operacao e' cancelada sem devolver erro
-				Unlock(fs2);
+				Unlock(fs2->tecnicofs_lock);
 				return ALREADY_EXISTS;
-			} else if (fs1==fs2 || TryLock(fs1)) {
+			} else if (fs1==fs2 || TryLock(fs1->tecnicofs_lock)) {
 
                 // Procurar o ficheiro pelo nome; Se existir [search_result = Inumber do Ficheiro]
 				if ((search_result = lookup(fs1, vec[0])) == -1) {
-					Unlock(fs1);
-					if (fs1 != fs2) Unlock(fs2); // nao fazer unlock 2 vezes da mesma arvore
+					Unlock(fs1->tecnicofs_lock);
+					if (fs1 != fs2) Unlock(fs2->tecnicofs_lock); // nao fazer unlock 2 vezes da mesma arvore
 					return DOESNT_EXIST;
 				}
                 // Verifica se nao e' o dono que esta a tentar alterar o nome do ficheiro
                 inode_get(search_result, &owner, NULL, NULL, NULL, 0);
                 if(uid != owner){
-                    Unlock(fs1);
-					if (fs1 != fs2) Unlock(fs2); // nao fazer unlock 2 vezes da mesma arvore
+                    Unlock(fs1->tecnicofs_lock);
+					if (fs1 != fs2) Unlock(fs2->tecnicofs_lock); // nao fazer unlock 2 vezes da mesma arvore
 					return PERMISSION_DENIED;
                 }
 
 
 				delete(fs1, vec[0]);
-				if (fs1 != fs2) Unlock(fs1);
+				if (fs1 != fs2) Unlock(fs1->tecnicofs_lock);
 				// se as fs forem iguais nao podemos fazer unlock antes do create
 				create(fs2, vec[1], search_result); // novo ficheiro: novo nome, mesmo Inumber
-				Unlock(fs2);
+				Unlock(fs2->tecnicofs_lock);
 
 				break;
 
 			} else 
-				Unlock(fs2);
+				Unlock(fs2->tecnicofs_lock);
 		}
 	}
 
