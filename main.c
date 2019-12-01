@@ -284,7 +284,7 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     if (lookup(fs2, vec[1]) != -1) { //se ja existir, a operacao e' cancelada sem devolver erro
 		openLock(fs2->tecnicofs_lock);
 		return ALREADY_EXISTS;
-
+    }
     if (fs1 != fs2) closeWriteLock(fs1->tecnicofs_lock);
 
     if ((search_result = lookup(fs1, vec[0])) == -1) {
