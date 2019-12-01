@@ -1,4 +1,5 @@
 #include "sync.h"
+#include <pthread.h>
 
 /* Optou-se por criar duas funcoes write_open e write_close:
     - uma implementacao para do vetor de comandos
@@ -27,109 +28,114 @@ void errnoPrint(){
 
 
 /*Inicializa Lock (Mutex|RWlock)*/
-void initLock(tecnicofs fs){
+void initLock(lock l){
     #ifdef MUTEX
-        initMutex(&fs->mutex_ap);  //ERROOOOOOOOOOOOOOOO
+        if (pthread_mutex_init(&l.mutex, NULL)) errnoPrint();  //ERROOOOOOOOOOOOOOOO
     #elif RWLOCK
-        initRWLock(&fs->rwlock);
+        if(pthread_rwlock_init(&l.rwlock, NULL)) errnoPrint();
     #endif
 }
 
-void initCond(pthread_cond_t *cond) {
-    if (pthread_cond_init(cond, NULL)) errnoPrint();
-}
-
-void initMutex(pthread_mutex_t *mutex) {
+/* void initMutex(pthread_mutex_t *mutex) {
     if (pthread_mutex_init(mutex, NULL)) errnoPrint();
 }
 
 void initRWLock(pthread_rwlock_t *rwlock) {
     if(pthread_rwlock_init(rwlock, NULL)) errnoPrint();
     
-}
+} */
 
 /*Destroi Lock (Mutex|RWlock)*/
-void destroyLock(tecnicofs fs) {
+void destroyLock(lock l) {
     #ifdef MUTEX
-        destroyMutex(&fs->mutex_ap);
+        if (pthread_mutex_destroy(&l.mutex)) errnoPrint();
     #elif RWLOCK
-        destroyRWLock(&fs->rwlock);
+        if (pthread_rwlock_destroy(&l.rwlock)) errnoPrint();
     #endif
 }
 
-void destroyMutex(pthread_mutex_t *mutex) {
+/* void destroyMutex(pthread_mutex_t *mutex) {
     if (pthread_mutex_destroy(mutex)) errnoPrint();
 }
 
 void destroyRWLock(pthread_rwlock_t *rwlock) {
     if(pthread_rwlock_destroy(rwlock)) errnoPrint();
-}
+} */
 
 /* Fecha o write_lock do acesso ao vetor de comandos */ 
-void wClosed_rc(pthread_mutex_t *mutex) {
+/* void closeMutex(pthread_mutex_t *mutex) {
     #if defined(MUTEX) || defined(RWLOCK)
         erroCheck(pthread_mutex_lock(mutex));
     #endif
-}
+} */
 
 /* Abre o write_lock do acesso ao vetor de comandos */
-void wOpen_rc(pthread_mutex_t *mutex) { 
+/* void openMutex(pthread_mutex_t *mutex) { 
     #if defined(MUTEX) || defined(RWLOCK)
         erroCheck(pthread_mutex_unlock(mutex));
     #endif
+} */
+
+/* void closeWriteLock(pthread_rwlock_t *rwlock) {
+    #if defined RWLOCK
+        erroCheck(pthread_rwlock_wrlock(rwlock));
+    #endif
 }
 
+void closeReadLock(pthread_rwlock_t *rwlock) {
+    #if defined RWLOCK
+        erroCheck(pthread_rwlock_rdlock(rwlock));
+    #endif
+}
+
+void openLock(pthread_rwlock_t *rwlock) {
+    #if defined RWLOCK
+        erroCheck(pthread_rwlock_unlock(rwlock));
+    #endif
+} */
+
 /* Fecha o write_lock dos comandos que editam a arvore */
-void wClosed(tecnicofs fs) {
+void closeWriteLock(lock l) {
     #ifdef MUTEX
-        erroCheck(pthread_mutex_lock(&fs->mutex_ap));
+        erroCheck(pthread_mutex_lock(&l.mutex));
     #elif RWLOCK
-        erroCheck(pthread_rwlock_wrlock(&fs->rwlock));
+        erroCheck(pthread_rwlock_wrlock(&l.rwlock));
     #endif
 }
 
 /* Fecha o read_lock do comando l*/
-void rClosed(tecnicofs fs) {
+void closeReadLock(lock l) {
     #ifdef MUTEX
-        erroCheck(pthread_mutex_lock(&fs->mutex_ap));
+        erroCheck(pthread_mutex_lock(&l.mutex));
     #elif RWLOCK
-        erroCheck(pthread_rwlock_rdlock(&fs->rwlock));
+        erroCheck(pthread_rwlock_rdlock(&l.rwlock));
     #endif
 }
 
-/* Abre o write_lock dos comandos que editam a arvore */
-void wOpen(tecnicofs fs) {
+/* Abre o rw_lock dos comandos que editam a arvore */
+void openLock(lock l) {
     #ifdef MUTEX
-        erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
+        erroCheck(pthread_mutex_unlock(&l.mutex));
     #elif RWLOCK
-        erroCheck(pthread_rwlock_unlock(&fs->rwlock));
-    #endif
-}
-
-/* Abre o read_lock do comando l*/
-void rOpen(tecnicofs fs) {
-    #ifdef MUTEX
-        erroCheck(pthread_mutex_unlock(&fs->mutex_ap));
-    #elif RWLOCK
-        erroCheck(pthread_rwlock_unlock(&fs->rwlock));
+        erroCheck(pthread_rwlock_unlock(&l.rwlock));
     #endif
 }
 
 
 int TryLock(tecnicofs fs) {
     #if defined(MUTEX)
-        return !pthread_mutex_trylock(&fs->mutex_ap);
+        return !pthread_mutex_trylock(&fs->tecnicofs_lock.mutex);
     #elif RWLOCK
-        return !pthread_rwlock_trywrlock(&fs->rwlock);
+        return !pthread_rwlock_trywrlock(&fs->tecnicofs_lock.rwlock);
     #endif
         return 1; // para nosync, nunca se faz o lock 
 }
 
 void Unlock(tecnicofs fs) {
     #if defined(MUTEX)
-        pthread_mutex_unlock(&fs->mutex_ap);
+        pthread_mutex_unlock(&fs->tecnicofs_lock.mutex);
     #elif RWLOCK
-        pthread_rwlock_unlock(&fs->rwlock);
+        pthread_rwlock_unlock(&fs->tecnicofs_lock.rwlock);
     #endif
 }
 
