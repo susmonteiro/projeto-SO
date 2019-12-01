@@ -200,6 +200,7 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 * interromper o accept: usar ***sigaction***; verificar o erro EINT (sair ordeiramente)
 * as tarefas ignoram o sinal, so o programa principal e que interrompe o accept :)
 * desativar os sinais durante o pthread_create, voltar a permitir logo a seguir
+* quando MAXCONNECTIONS for atingido terminar programa (chamar funcao que signaction chama)
 
 ---
 ## Perguntitas
@@ -216,6 +217,7 @@ Durante uma sessao ativa (devolvem erro se forem chamadas sem uma sessao ativa):
 * Uma thread ira ler este comando
   * Vai voltar a escrever o comando (atencao a exclusao mutua)
   * exit_thread
+* tecnico-api-constants.h na mesma pasta tecnicofs-client-api.h
 
 
 ---
