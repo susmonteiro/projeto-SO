@@ -59,7 +59,9 @@ int idx = 0;
 
 //Tabela de Arvores de ficheiros
 tecnicofs* hash_tab;
-pthread_mutex_t mutex;
+int opened_files[INODE_TABLE_SIZE]; //vetor que guarda o numero de clientes que tem um determinado ficheiro aberto
+lock idx_lock;  //mutex para a variavel idx
+lock of_lock;   //mutex para o vetor opened_files
 
 int sockfd;
 
@@ -118,13 +120,20 @@ void initSignal(){
 
     if (sigaction(SIGINT, &act, NULL) < 0) sysError("initSignals(sigaction)");
 }
+
+void initOpenedFiles() {
+    int i = 0;
+    for(i = 0; i < INODE_TABLE_SIZE; i++) {
+        opened_files[i] = 0;
+    }
+}
 //Inicializa memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void initHashTable(int size){
     int i = 0;
 	hash_tab = (tecnicofs*)malloc(size * sizeof(tecnicofs)); //alocacao da tabela para tecnicofs
 	for(i = 0; i < size; i++) {
 		hash_tab[i] = new_tecnicofs();  // aloca um tecnicofs (uma arvore)
-		initLock(hash_tab[i]);          // inicializa trinco desse tecnicofs (arvore)
+		initLock(hash_tab[i]->tecnicofs_lock);          // inicializa trinco desse tecnicofs (arvore)
 
 		hash_tab[i]->bstRoot = NULL;    // raiz de cada arvore
 	}
@@ -152,10 +161,12 @@ int socketInit() {
 int initialize(){
     initSignal();       
     //estruturas
+    initOpenedFiles();
     initHashTable(numberBuckets);
     inode_table_init();
     //
-    initMutex(&mutex);
+    initLock(idx_lock);
+    initLock(of_lock);
     return socketInit(); 
 
 }
@@ -171,8 +182,10 @@ int initialize(){
 //Liberta memoria usada pela HashTable de tecnicofs (arvores) e os seus trincos
 void freeHashTab(int size){
     int i;
+    destroyLock(idx_lock);
+    destroyLock(of_lock);
 	for(i = 0; i < size; i++) {
-		destroyLock(hash_tab[i]);
+		destroyLock(hash_tab[i]->tecnicofs_lock);
 		free_tecnicofs(hash_tab[i]);
 	}
 	free(hash_tab); //liberta tabela (final)
@@ -193,9 +206,9 @@ void liberator(){
 int fileLookup(tecnicofs fs, char *filename){
     int search_result;   //inumber retornado pela funcao lookup
 
-    rClosed(fs);    // permite leituras simultaneas, impede escrita
+    closeReadLock(fs->tecnicofs_lock);    // permite leituras simultaneas, impede escrita
     search_result = lookup(fs, filename); //procura por nome, devolve inumber
-    rOpen(fs);
+    openLock(fs->tecnicofs_lock);
     return search_result;
 }
 
@@ -213,10 +226,10 @@ int commandCreate(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid) {
 
     printf("permiss:%d %d\n", atoi(vec[1])/10, atoi(vec[1])%10);
 
-    wClosed(fs);    // bloqueia leituras e escritas do fs
+    closeWriteLock(fs->tecnicofs_lock);    // bloqueia leituras e escritas do fs
     iNumber = inode_create(uid, atoi(vec[1])/10, atoi(vec[1])%10);      //FIXME nao deixar isto nojento
     create(fs, vec[0], iNumber);
-    wOpen(fs);
+    openLock(fs->tecnicofs_lock);
 
 
     puts("commandCreate");
@@ -232,17 +245,21 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     if ((search_result = fileLookup(fs, vec[0])) == -1)     //se nao existir
         return DOESNT_EXIST;
 
+    closeReadLock(of_lock);
+    if (opened_files[search_result] != 0) return FILE_IS_OPENED;
+    openLock(of_lock);
+
     inode_get(search_result, &owner, NULL, NULL, NULL, 0);
 
     // confirmar permissao para apagar (apenas consegue apagar o dono)
     if (uid != owner)
         return PERMISSION_DENIED;
     
-    wClosed(fs);    // bloqueia leituras e escritas do fs
+    closeWriteLock(fs->tecnicofs_lock);    // bloqueia leituras e escritas do fs
     printf("seacrhres %d", search_result);
     inode_delete(search_result);
     delete(fs, vec[0]); 
-    wOpen(fs);   
+    openLock(fs->tecnicofs_lock);   
 
     puts("CommandDelete");
 
@@ -324,6 +341,10 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
     file_tab[idx_fd].iNumber = search_result;
     file_tab[idx_fd].open_as = mode;
 
+    closeWriteLock(of_lock);
+    opened_files[search_result]++; //incrementa o numero de clientes que tem o ficheiro (cujo iNumber e' search_result) aberto
+    openLock(of_lock);
+
     puts("CommandOpen");
 
     printf("%d\n", file_tab[idx_fd].iNumber);
@@ -331,11 +352,15 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
 }
 
 int commandClose(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd *file_tab){
-    int idx_fd = atoi(vec[0]);
+    int idx_fd = atoi(vec[0]);  //indice da tabela de ficheiros do cliente
 
     if (idx_fd < 0 || idx_fd > 4) return INDEX_OUT_OF_RANGE;
 
     if (file_tab[idx_fd].iNumber == FD_EMPTY) return NOT_OPENED;
+
+    closeWriteLock(of_lock);
+    opened_files[file_tab[idx_fd].iNumber]--; //decrementa o numero de clientes que tem o ficheiro (cujo iNumber e' file_tab[idx_fd].iNumber) aberto
+    openLock(of_lock);
 
     file_tab[idx_fd].iNumber = FD_EMPTY;
 
@@ -419,13 +444,13 @@ void processClient(int sockfd){
         if(newsockfd < 0) sysError("processClient(accept)");
         
 
-        wClosed_rc(&mutex);
+        closeWriteLock(idx_lock);
         //Confirma espaco para aceitar
         if(idx == MAXCONNECTIONS) endServer();
         if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
         idx++; 
         
-        wOpen_rc(&mutex);
+        openLock(idx_lock);
 
         puts("prossclient");
 
@@ -469,17 +494,17 @@ void endServer(){
 //==================
 void readCommandfromSocket(int fd, char* buffer){
     char c;
-    int idx = 0;
+    int i = 0;
     puts("ReadCommandfromSocket");
 
     size_t size = read(fd, &c, CHAR_SIZE);
     printf("%ld\n", size);
     while(size){   
         if(c == '\0'){
-            buffer[idx] = c;
+            buffer[i] = c;
             break;
         }
-        buffer[idx++] = c;
+        buffer[i++] = c;
         size = read(fd, &c, CHAR_SIZE);
     }
 

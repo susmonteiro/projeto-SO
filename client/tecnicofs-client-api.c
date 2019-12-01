@@ -63,7 +63,7 @@ int tfsDelete(char *filename){
     printf("answer:%d\n", answer);
 
     if (answer == DOESNT_EXIST) return TECNICOFS_ERROR_FILE_NOT_FOUND; 
-
+    if (answer == FILE_IS_OPENED) return TECNICOFS_ERROR_FILE_IS_OPEN;
     return SUCCESS;
 }
 

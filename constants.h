@@ -21,6 +21,7 @@
 #define MAX_OPENED_FILES -4
 #define NOT_OPENED -5
 #define INDEX_OUT_OF_RANGE -6
+#define FILE_IS_OPENED -7
 
 
 #endif /* CONSTANTS_H */
