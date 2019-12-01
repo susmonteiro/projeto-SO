@@ -266,7 +266,6 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     return SUCCESS;
 }
 
-
 //Comando renomear
 int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 	int search_result;           //inumber retornado pela funcao lookup
