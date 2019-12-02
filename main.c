@@ -89,6 +89,13 @@ void initOpenedFilesCounter() {
     }
 }
 
+void clearClientOpenedFilesCounter(tecnicofs_fd *file_tab) {
+    int i = 0;
+    for(i = 0; i < MAX_OPENED_FILES; i++) {
+        opened_files[file_tab[i].iNumber] -= 1;
+    }
+}
+
 int initialize(){
     initSignal();       
     //estruturas
@@ -509,6 +516,9 @@ void *clientSession(void* socketfd) {
                 //antes de sair da funcao applyCommands(), a tarefa atual coloca um novo comando de finalizacao no vetor, 
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
                 if(close(fd) == -1) sysError("clientSession(close)");
+                closeWriteLock(of_lock);
+                clearClientOpenedFilesCounter(fd_table);
+                openLock(of_lock);
                 pthread_exit(NULL);
 
             default: { /* error */

@@ -4,3 +4,12 @@
 ==2833== Command: ./tecnicofs-rwlock socket out 1
 ==2833== Parent PID: 2832
 ==2833== 
+==2833== 
+==2833== HEAP SUMMARY:
+==2833==     in use at exit: 0 bytes in 0 blocks
+==2833==   total heap usage: 21 allocs, 21 frees, 10,907 bytes allocated
+==2833== 
+==2833== All heap blocks were freed -- no leaks are possible
+==2833== 
+==2833== For lists of detected and suppressed errors, rerun with: -s
+==2833== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
