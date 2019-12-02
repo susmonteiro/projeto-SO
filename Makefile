@@ -77,7 +77,7 @@ socket-rwlock.o: socket.c socket.h
 
 main-rwlock.o: CFLAGS+=-DRWLOCK
 main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h lib/inodes.h sync.h
-tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o erro.o socket-rwlock.o
+tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o erro-rwlock.o socket-rwlock.o
 
 
 %.o:
