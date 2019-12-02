@@ -1,22 +1,22 @@
 #include "socket.h"
 
 extern char* nameSocket;
-extern struct timeval start;
-extern struct timeval end; //valores de tempo inicial e final
+extern struct timeval start;    //valor de tempo inicial
+extern struct timeval end;      //valor de tempo final
 
 extern pthread_t slave_threads[MAXCONNECTIONS];
-extern int idx;
-extern lock idx_lock;  //mutex para a variavel idx
+extern int idx;         //posicao atual de slave_threads
 
 extern void *clientSession(void* socketfd);
 extern void endServer();
 
-
+//inicializa o socket do servidor
 int socketInit() {
     int sockfd, servlen;
     struct sockaddr_un serv_addr;
     int str_size = strlen(SOCKETDIR) + strlen(nameSocket) + 1; //  
     char pwd[str_size];
+
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
         sysError("SocketInit(socket)");
 
@@ -37,24 +37,24 @@ int socketInit() {
     return sockfd;
 }
 
-
+//le um comando do socket
 void readCommandfromSocket(int fd, char* buffer){
     char c;
     int i = 0;
-    puts("ReadCommandfromSocket");
 
-    size_t size = read(fd, &c, CHAR_SIZE);
-    while(size){   
-        if(c == '\0'){
+    if (read(fd, &c, CHAR_SIZE) != CHAR_SIZE) sysError("readCommandfromSocket(read)");
+    
+    while(1){   
+        if(c == '\0'){  //quando for atingido um '\0', chegamos ao fim do comando
             buffer[i] = c;
             break;
         }
         buffer[i++] = c;
-        size = read(fd, &c, CHAR_SIZE);
+        if (read(fd, &c, CHAR_SIZE) != CHAR_SIZE) sysError("readCommandfromSocket(read)");
     }
-
 }
 
+//retorna o uid do cliente
 uid_t getSockUID(int fd){
     struct ucred u_cred;
     socklen_t len = sizeof(struct ucred);
@@ -62,7 +62,9 @@ uid_t getSockUID(int fd){
     return u_cred.uid;
 }
 
-void processClient(int sockfd){
+//funcao do servidor que trata de aceitar os pedidos de ligacao dos clientes,
+//criando um novo socket e uma tarefa, para criar dialogo com o cliente
+void processClient(int sockfd) {
     int newsockfd;
     socklen_t clilen;
     struct sockaddr_un cli_addr;
@@ -76,27 +78,20 @@ void processClient(int sockfd){
         if(newsockfd < 0) sysError("processClient(accept)");
         
 
-        closeWriteLock(idx_lock);
         //Confirma espaco para aceitar
-        if(idx == MAXCONNECTIONS) endServer();
+        if(idx == MAXCONNECTIONS) endServer(); //quando o maximo de ligacoes possivel for atingido, terminamos ordeiramente o servidor
         if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
-        idx++; 
-        
-        openLock(idx_lock);
-
-        puts("prossclient");
-
+        idx++; //apenas acessivel pela tarefa principal
     }
 }
 
+//funcao que trata de enviar uma resposta ao pedido do cliente
 void feedback(int sockfd, int msg){
-    if(msg == INT_MIN) return;
+    if(msg == INT_MIN) return;  //caso a mensagem tenha o valor default, nao se envia resposta ao cliente
     if(write(sockfd, &msg, INT_SIZE) != INT_SIZE) sysError("feedback(write)");
-    
-    printf("answer: %d", msg);
 }
 
-
+//fecho de um socket
 void closeSocket(int fd){
     if(close(fd) < 0) sysError("closeSocket(close)");
 }

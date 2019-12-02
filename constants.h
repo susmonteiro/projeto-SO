@@ -3,7 +3,7 @@
 
 #define SOCKETDIR "/tmp/"
 
-#define END_COMMAND 'z' //Comando designado para terminar a ligacao cliente-servidor
+#define END_COMMAND 'z'     //Comando designado para terminar a ligacao cliente-servidor
 #define CREATE_COMMAND 'c'
 #define DELETE_COMMAND 'd'
 #define RENAME_COMMAND 'r'
@@ -16,6 +16,7 @@
 #define CHAR_SIZE 1
 #define INT_SIZE 4
 
+//mensagens de erro do servidor
 #define SUCCESS 0
 #define ALREADY_EXISTS -1
 #define DOESNT_EXIST -2

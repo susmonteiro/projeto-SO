@@ -1,7 +1,7 @@
 # Makefile, versao 1
 # Sistemas Operativos, DEI/IST/ULisboa 2019-20
 
-SOURCES = main.c fs.c sync.c erro.c socket.c
+SOURCES = main.c fs.c sync.c erro.c socket.c tecnicofs-server-api.c
 SOURCES+= lib/bst.c lib/hash.c lib/inodes.c
 # OBJS_NOSYNC = $(SOURCES:%.c=%.o)
 # OBJS_MUTEX  = $(SOURCES:%.c=%-mutex.o)
@@ -31,9 +31,9 @@ main.o: main.c fs.h lib/bst.h lib/hash.h sync.h
 lib/hash.o: lib/hash.c lib/hash.h
 erro.o: erro.c erro.h
 socket.o: socket.c socket.h
+tecnicofs-server-api.o: tecnicofs-server-api.c tecnicofs-server-api.h 
 
-tecnicofs-nosync: lib/bst.o fs.o sync.o main.o lib/hash.o socket.o
-
+tecnicofs-nosync: lib/bst.o fs.o sync.o main.o lib/hash.o socket.o tecnicofs-server-api.o
 
 
 ### MUTEX ###
@@ -52,10 +52,11 @@ erro-mutex.o: erro.c erro.h
 
 socket-mutex.o: socket.c socket.h
 
+tecnicofs-server-api-mutex.o: tecnicofs-server-api.c tecnicofs-server-api.h 
 
 main-mutex.o: CFLAGS+=-DMUTEX
 main-mutex.o: main.c fs.h lib/bst.h sync.h lib/hash.h
-tecnicofs-mutex: lib/bst-mutex.o fs-mutex.o sync-mutex.o main-mutex.o lib/hash.o erro-mutex.o socket-mutex.o
+tecnicofs-mutex: lib/bst-mutex.o fs-mutex.o sync-mutex.o main-mutex.o lib/hash.o erro-mutex.o socket-mutex.o tecnicofs-server-api-mutex.o
 
 ### RWLOCK ###
 lib/bst-rwlock.o: CFLAGS+=-DRWLOCK
@@ -75,9 +76,11 @@ erro-rwlock.o: erro.c erro.h
 
 socket-rwlock.o: socket.c socket.h
 
+tecnicofs-server-api-rwlock.o: tecnicofs-server-api.c tecnicofs-server-api.h 
+
 main-rwlock.o: CFLAGS+=-DRWLOCK
 main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h lib/inodes.h sync.h
-tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o erro-rwlock.o socket-rwlock.o
+tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o erro-rwlock.o socket-rwlock.o tecnicofs-server-api-rwlock.o
 
 
 %.o:

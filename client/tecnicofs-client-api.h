@@ -32,7 +32,7 @@ int tfsOpen(char *filename, permission mode);
 int tfsClose(int fd);
 int tfsRead(int fd, char *buffer, int len);
 int tfsWrite(int fd, char *buffer, int len);
-int tfsMount(char * address);
+int tfsMount(char *address);
 int tfsUnmount();
 
 #endif /* TECNICOFS_CLIENT_API_H */

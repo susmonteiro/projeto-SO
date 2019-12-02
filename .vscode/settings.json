@@ -7,6 +7,11 @@
         "socket.h": "c",
         "stdio.h": "c",
         "condition_variable": "c",
-        "sync.h": "c"
+        "sync.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "valarray": "c"
     }
 }

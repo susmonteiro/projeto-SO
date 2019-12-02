@@ -36,9 +36,18 @@ int lookup(tecnicofs fs, char *name){
 	return -1;
 }
 
-void print_HashTab_tree(FILE * fp, tecnicofs* hashTab, int size){
+/* Abre o ficheiro de output e escreve neste a arvore */
+void print_HashTab_tree(char* outputFile, tecnicofs* hashTab, int size){
 	int i;
+	FILE *fp = fopen(outputFile, "w");
+	if (!fp) {
+        errnoPrint();
+        return;
+    }
+
 	for(i = 0; i < size; i++) print_tecnicofs_tree(fp, hashTab[i]);
+
+	fclose(fp);
 }
 
 void print_tecnicofs_tree(FILE * fp, tecnicofs fs){
