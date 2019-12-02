@@ -7,11 +7,11 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "erro.h"
+#include "../common/erro.h"
 #include "socket.h"
 #include "sync.h"
 #include "lib/inodes.h"
-#include "constants.h"
+#include "../common/constants.h"
 #include "tecnicofs-server-api.h"
 
 //==========

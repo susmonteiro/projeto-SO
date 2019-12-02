@@ -2,7 +2,7 @@
 #define SYNC_H
 
 #include <stdlib.h>
-#include "erro.h"
+#include "../common/erro.h"
 
 #include "fs.h"
 

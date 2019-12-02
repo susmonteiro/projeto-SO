@@ -2,7 +2,11 @@
 #define INODES_H
 
 #include <sys/types.h>
-#include "../tecnicofs-api-constants.h"
+#include <string.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "../../common/tecnicofs-api-constants.h"
 
 #define FREE_INODE -1
 #define INODE_TABLE_SIZE 50

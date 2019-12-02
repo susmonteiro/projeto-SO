@@ -5,9 +5,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include "../erro.h"
-#include "../tecnicofs-api-constants.h"
-#include "../constants.h"
+#include "../common/erro.h"
+#include "../common/tecnicofs-api-constants.h"
+#include "../common/constants.h"
 
 
 #define NOT_CONNECTED -1    // cliente sem sessao ativa

@@ -5,8 +5,8 @@
 #include <stdlib.h>
 
 #include "fs.h"
-#include "tecnicofs-api-constants.h"
-#include "constants.h"
+#include "../common/tecnicofs-api-constants.h"
+#include "../common/constants.h"
 #include "lib/inodes.h"
 #include "sync.h"
 #include "socket.h"

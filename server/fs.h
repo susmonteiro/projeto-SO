@@ -1,7 +1,7 @@
 #ifndef FS_H
 #define FS_H
 #include <pthread.h>
-#include "erro.h"
+#include "../common/erro.h"
 #include "lib/bst.h"
 #include "lib/hash.h"
 

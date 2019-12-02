@@ -12,8 +12,8 @@
 
 #include "fs.h"
 #include "sync.h"
-#include "erro.h"
-#include "constants.h"
+#include "../common/erro.h"
+#include "../common/constants.h"
 
 /* SOMAXCONN e' o numero maximo de ligacoes que o servidor pode ter simultaneamente.
 Optamos por definir que este corresponde tambem ao numero maximo de ligacoes 
