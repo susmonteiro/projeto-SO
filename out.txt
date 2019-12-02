@@ -45,4 +45,4 @@ ReadCommandfromSocket
 sscanf do parse
 	1
 z === bcd === 4.
-TecnicoFS completed in 2541.8523 seconds.
+TecnicoFS completed in 4.2105 seconds.

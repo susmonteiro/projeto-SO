@@ -44,7 +44,6 @@ void readCommandfromSocket(int fd, char* buffer){
     puts("ReadCommandfromSocket");
 
     size_t size = read(fd, &c, CHAR_SIZE);
-    printf("%ld\n", size);
     while(size){   
         if(c == '\0'){
             buffer[i] = c;
@@ -93,6 +92,8 @@ void processClient(int sockfd){
 void feedback(int sockfd, int msg){
     if(msg == INT_MIN) return;
     if(write(sockfd, &msg, INT_SIZE) != INT_SIZE) sysError("feedback(write)");
+    
+    printf("answer: %d", msg);
 }
 
 

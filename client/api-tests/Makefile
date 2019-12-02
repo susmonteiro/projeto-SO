@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -std=gnu99 -I../ 
 
-test=client-api-test-success.c
+test=client-api-test-read.c
 
 .PHONY: all clean
 

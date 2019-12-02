@@ -27,42 +27,49 @@ int main(int argc, char** argv) {
 // 
     int fd = -1;
     assert((fd = tfsOpen("abc", RW)) == 0);
-//     // assert((fd = tfsOpen("bla", RW)) == 1);
+    assert((fd = tfsOpen("bla", RW)) == 1);
+    fgets(readBuffer, 5, stdin);
+    assert((fd = tfsOpen("a", READ)) == 2);
+    assert((fd = tfsOpen("b", RW)) == 3);
+    assert((fd = tfsOpen("c", RW)) == 4);
+    assert((fd = tfsOpen("ab", RW)) == TECNICOFS_ERROR_MAXED_OPEN_FILES);
+    fgets(readBuffer, 5, stdin);
+    //     // assert((fd = tfsOpen("bla", RW)) == 1);
 //     // assert(tfsClose(fd) == SUCCESS);
 //     // assert((fd = tfsOpen("a", READ)) == 1);
 
 // /*     assert(tfsClose(fd) == TECNICOFS_ERROR_FILE_NOT_OPEN);
 //     assert(tfsClose(7) == TECNICOFS_ERROR_OTHER);
 //  */
-    assert(tfsWrite(fd, "12345", 5) == 0);
-    // assert((fd = tfsOpen("susu", RW)) == 1);
+    // assert(tfsWrite(fd, "12345", 5) == 0);
+    // // assert((fd = tfsOpen("susu", RW)) == 1);
 
-    printf("Test: read full file content");
-    assert(tfsRead(fd, readBuffer, 6) == 5);
-    printf("Content read: %s\n", readBuffer);
-    printf("Test: read only first 3 characters of file content");
-    memset(readBuffer, 0, 10*sizeof(char));
-    assert(tfsRead(fd, readBuffer, 4) == 3);
-    printf("Content read: %s\n", readBuffer);
+    // printf("Test: read full file content");
+    // assert(tfsRead(fd, readBuffer, 6) == 5);
+    // printf("Content read: %s\n", readBuffer);
+    // printf("Test: read only first 3 characters of file content");
+    // memset(readBuffer, 0, 10*sizeof(char));
+    // assert(tfsRead(fd, readBuffer, 4) == 3);
+    // printf("Content read: %s\n", readBuffer);
     
-    printf("Test: read with buffer bigger than file content");
-    memset(readBuffer, 0, 10*sizeof(char));
-    // assert(tfsRead(fd, readBuffer, 10) == 5);
-    printf("\n%d\n", tfsRead(fd, readBuffer, 10));
-    printf("Content read: %s\n", readBuffer);
+    // printf("Test: read with buffer bigger than file content");
+    // memset(readBuffer, 0, 10*sizeof(char));
+    // // assert(tfsRead(fd, readBuffer, 10) == 5);
+    // printf("\n%d\n", tfsRead(fd, readBuffer, 10));
+    // printf("Content read: %s\n", readBuffer);
 
-    assert(tfsClose(fd) == 0);
+    // assert(tfsClose(fd) == 0);
 
-    printf("Test: read closed file");
-    assert(tfsRead(fd, readBuffer, 6) == TECNICOFS_ERROR_FILE_NOT_OPEN);
+    // printf("Test: read closed file");
+    // assert(tfsRead(fd, readBuffer, 6) == TECNICOFS_ERROR_FILE_NOT_OPEN);
 
-    printf("Test: read file open in write mode");
-    assert((fd = tfsOpen("abc", WRITE)) == 0);
-    assert(tfsRead(fd, readBuffer, 6) == TECNICOFS_ERROR_INVALID_MODE);
+    // printf("Test: read file open in write mode");
+    // assert((fd = tfsOpen("abc", WRITE)) == 0);
+    // assert(tfsRead(fd, readBuffer, 6) == TECNICOFS_ERROR_INVALID_MODE);
 
-    assert(tfsClose(fd) == 0);
+    // assert(tfsClose(fd) == 0);
 
-    assert(tfsDelete("abc") == 0);
+    // assert(tfsDelete("abc") == 0);
     assert(tfsUnmount() == 0);
 
     return 0;

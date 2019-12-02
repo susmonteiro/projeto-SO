@@ -24,8 +24,6 @@ int sockfd;     //descritor de ficheiro
 struct timeval start, end; //valores de tempo inicial e final
 
 
-
-
 //================
 //Funcoes de parse
 //================
@@ -199,9 +197,6 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     /* Procura no vetor de ficheiros abertos se algum cliente tem este ficheiro aberto
     Em caso afirmativo, cancela a operacao de apagar o ficheiro */
     if (opened_files[search_result] != 0) { 
-        
-        printf("openfilesearchresult: %d\n", opened_files[search_result]);
-
         openLock(of_lock);
         openLock(fs->tecnicofs_lock);
         return FILE_IS_OPENED;
@@ -323,7 +318,7 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
     opened_files[search_result]++; //incrementa o numero de clientes que tem o ficheiro (cujo iNumber e' search_result) aberto
     openLock(of_lock);
 
-    printf("%d\n", file_tab[idx_fd].iNumber);
+    printf("inumber do fich aberto:%d\n", file_tab[idx_fd].iNumber);
     return idx_fd;
 }
 
@@ -364,12 +359,11 @@ void commandRead(int fd, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], tecnicofs_fd
         // msg passa a ser o numero de caracteres lidos
     
     feedback(fd, msg); //informar de possivel erro
-    printf("%d\n", msg);
     if(msg > 0){ // caso a msg nao seja erro
 
     // O TAMANHO MSG NAO INCLUI O \O!!!!!!!! STRLEN
 
-    printf("conteudo do bugger: %s\n", buffer);
+    printf("conteudo do readbugger: %s\n", buffer);
     // +1 PARA INCLUIR O \0
     if (write(fd, buffer, msg+1) != msg+1) sysError("commandRead(write)");
     }
@@ -451,7 +445,7 @@ void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INP
 
     puts("sscanf do parse");
     int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
-    printf("\t%d\n", numTokens);
+    printf("numtokens:%d\n", numTokens);
 
     printf("%c === %s === %s.\n", *command, vec[0], vec[1]);
 

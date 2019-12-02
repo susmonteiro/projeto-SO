@@ -46,5 +46,6 @@ typedef struct  {
 void *clientSession(void * socketfd);
 void endServer();
 void feedback(int sockfd, int msg);
+static void displayUsage (const char* appName);
 
 #endif /* MAIN_H */
