@@ -21,12 +21,12 @@
 #define MAX_INPUT_SIZE 100
 #define MAX_ARGS_INPUTS 2
 #define MILLION 1000000
-#define N_ARGC 4
-#define COMMAND_NULL -1 //Comando inexistente
-#define MAX_FILES_OPENED 5
-#define FD_EMPTY -1
+#define N_ARGC 4            //Numero de argumentos que o programa deve receber
+#define COMMAND_NULL -1     //Comando inexistente
+#define MAX_FILES_OPENED 5  //Tamanho da tabela de ficheiros abertos para cliente
+#define FD_EMPTY -1         //Assinala uma posicao vazia da tabela de ficheiros de cada cliente
 
-#define CAN_READ(file_permission) file_permission & READ 
+#define CAN_READ(file_permission) file_permission & READ
 #define CAN_WRITE(file_permission) file_permission & WRITE 
 #define OWNER_PERMISSION(permission) atoi(permission)/10
 #define OTHER_PERMISSION(permission) atoi(vec[1])%10
