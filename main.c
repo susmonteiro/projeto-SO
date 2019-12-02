@@ -188,6 +188,7 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     closeReadLock(of_lock);
     if (opened_files[search_result] != 0) {
         openLock(of_lock);
+        openLock(fs->tecnicofs_lock);
         return FILE_IS_OPENED;
     }
     openLock(of_lock);
