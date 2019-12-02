@@ -17,6 +17,12 @@
 
 #define MAXCONNECTIONS SOMAXCONN
 
+int socketInit();
+void readCommandfromSocket(int fd, char* buffer);
+uid_t getSockUID(int fd);
+void processClient(int sockfd);
+void feedback(int sockfd, int msg);
+void closeSocket(int fd);
 
 
 #endif /* SOCKET_H */
