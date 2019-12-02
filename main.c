@@ -122,7 +122,7 @@ void freeHashTab(int size){
 
 
 void liberator(){
-    close(sockfd);
+    closeSocket(sockfd);
     freeHashTab(numberBuckets);
     inode_table_destroy();
     free(idx_lock);

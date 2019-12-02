@@ -94,3 +94,8 @@ void feedback(int sockfd, int msg){
     if(msg == INT_MIN) return;
     if(write(sockfd, &msg, INT_SIZE) != INT_SIZE) sysError("feedback(write)");
 }
+
+
+void closeSocket(int fd){
+    if(close(fd) < 0) sysError("closeSocket(close)");
+}
