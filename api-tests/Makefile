@@ -7,8 +7,8 @@ test=client-api-test-read.c
 
 all: a.out
 
-a.out: ../tecnicofs-client-api.c  ../../constants.h ../../erro.c ../../tecnicofs-api-constants.h ../tecnicofs-client-api.h $(test)
-	$(CC) $(CFLAGS) $(test) ../tecnicofs-client-api.c ../../erro.c
+a.out: ../client/tecnicofs-client-api.c  ../common/constants.h ../common/erro.c ../common/tecnicofs-api-constants.h ../client/tecnicofs-client-api.h $(test)
+	$(CC) $(CFLAGS) $(test) ../client/tecnicofs-client-api.c ../common/erro.c
 
 
 clean:
