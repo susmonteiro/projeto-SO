@@ -522,8 +522,8 @@ void *clientSession(void* socketfd) {
             case END_COMMAND:
                 //antes de sair da funcao applyCommands(), a tarefa atual coloca um novo comando de finalizacao no vetor, 
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
-                if(close(fd) == -1) sysError("clientSession(close)");
                 clearClientOpenedFilesCounter(fd_table);
+                if(close(fd) == -1) sysError("clientSession(close)");
                 pthread_exit(NULL);
 
             default: { /* error */
