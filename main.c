@@ -505,7 +505,7 @@ void *clientSession(void* socketfd) {
                 //para que a proxima tarefa a aceder ao vetor de comandos tambem possa terminar
                 if(close(fd) == -1) sysError("clientSession(close)");
                 closeWriteLock(of_lock);
-                clearClientOpenedFilesCounter();
+                clearClientOpenedFilesCounter(fd_table);
                 openLock(of_lock);
                 pthread_exit(NULL);
 
