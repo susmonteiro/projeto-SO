@@ -295,7 +295,7 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
 
     mode = atoi(vec[1]);
     //consideramos que a permissao dos outros nao se aplica ao dono do ficheiro
-    if (!(OWNER_HAS_PERMISSION(user, uid, mode, ownerp) || OTHER_HAS_PERMISSION(user, uid, mode, otherp))){
+    if (!((OWNER_HAS_PERMISSION(user, uid, mode, ownerp)) || (OTHER_HAS_PERMISSION(user, uid, mode, otherp)))){
         return PERMISSION_DENIED;
     }
     
