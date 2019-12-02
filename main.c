@@ -192,6 +192,7 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     Em caso afirmativo, cancela a operacao de apagar o ficheiro */
     if (opened_files[search_result] != 0) { 
         openLock(of_lock);
+        
         return FILE_IS_OPENED;
     }
     openLock(of_lock);
@@ -273,7 +274,7 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 *   Retorno:
 *       - Erro de inexistencia de ficheiro (DOESNT_EXISTS)
 *       - Erro se o cliente nao tiver permissao para abrir o ficheiro (PERMISSION_DENIED)
-*       - Erro se nao houver posicoes livres na tabela de ficheiros para abrir um novo ficheiro (TECNICOFS_ERROR_MAXED_OPEN_FILES)
+*       - Erro se nao houver posicoes livres na tabela de ficheiros para abrir um novo ficheiro (MAX_OPENED_FILES)
 *       - Caso contrario, retorna o fd onde o ficheiro ficou aberto 
 */
 int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_fd *file_tab){
@@ -294,7 +295,7 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
 
     mode = atoi(vec[1]);
     //consideramos que a permissao dos outros nao se aplica ao dono do ficheiro
-    if(!((user==uid && (mode&ownerp) == mode) || (user!=uid && (mode&otherp) == mode))){
+    if (!(OWNER_HAS_PERMISSION(user, uid, mode, ownerp) || OTHER_HAS_PERMISSION(user, uid, mode, otherp))){
         return PERMISSION_DENIED;
     }
     
@@ -310,8 +311,6 @@ int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_
     closeWriteLock(of_lock);
     opened_files[search_result]++; //incrementa o numero de clientes que tem o ficheiro (cujo iNumber e' search_result) aberto
     openLock(of_lock);
-
-    puts("CommandOpen");
 
     printf("%d\n", file_tab[idx_fd].iNumber);
     return idx_fd;

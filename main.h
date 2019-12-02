@@ -30,7 +30,10 @@
 #define CAN_WRITE(file_permission) file_permission & WRITE 
 #define OWNER_PERMISSION(permission) atoi(permission)/10
 #define OTHER_PERMISSION(permission) atoi(vec[1])%10
-
+//verifica se, caso o user seja o owner, este tem permissao para abrir o ficheiro no "mode" especificado 
+#define OWNER_HAS_PERMISSION(user_uid, owner_uid, mode, owner_permission) user_uid==owner_uid && (mode&owner_permission) == mode
+//verifica se, caso o user nao seja o owner, este tem permissao para abrir o ficheiro no "mode" especificado 
+#define OTHER_HAS_PERMISSION(user_uid, owner_uid, mode, other_permission) user_uid!=owner_uid && (mode&other_permission) == mode
 
 typedef struct  {
     int iNumber;
