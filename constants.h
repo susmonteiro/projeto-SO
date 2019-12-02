@@ -1,6 +1,8 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#define SOCKETDIR "/tmp/"
+
 #define END_COMMAND 'z' //Comando designado para terminar a ligacao cliente-servidor
 #define CREATE_COMMAND 'c'
 #define DELETE_COMMAND 'd'

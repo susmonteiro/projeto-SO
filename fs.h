@@ -1,19 +1,20 @@
 #ifndef FS_H
 #define FS_H
 #include <pthread.h>
+#include "erro.h"
 #include "lib/bst.h"
 #include "lib/hash.h"
 
-typedef struct {
+typedef struct lock {
     #ifdef MUTEX
         pthread_mutex_t mutex;   // bloqueio para os comandos c, l, d
     #elif RWLOCK
         pthread_rwlock_t rwlock;    // bloqueio para os comandos c, l, d
     #endif
-} lock;
+} *lock;
 
 typedef struct tecnicofs {
-    node* bstRoot; //nó da raiz da arvore
+    node* bstRoot; // nó da raiz da arvore
     lock tecnicofs_lock;
 } *tecnicofs;
 

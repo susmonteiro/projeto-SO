@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     int fd = -1;
     assert((fd = tfsOpen("bcd", RW)) == 0);
 
-    assert(tfsWrite(fd, "hmm", 3) == 0);
+    assert(tfsWrite(fd, "hmmmmmm", 3) == 0);
 
     assert(tfsRead(fd, readBuffer, 4) == 3);
 

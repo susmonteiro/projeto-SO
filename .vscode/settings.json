@@ -5,6 +5,8 @@
         "constants.h": "c",
         "tecnicofs-api-constants.h": "c",
         "socket.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "condition_variable": "c",
+        "sync.h": "c"
     }
 }

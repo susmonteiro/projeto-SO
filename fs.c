@@ -1,20 +1,24 @@
 #include "fs.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
 //Cria um sistema de ficheiros (Tecnicofs)
 tecnicofs new_tecnicofs(){
 	tecnicofs fs = malloc(sizeof(struct tecnicofs));
 	if (!fs) {
-			perror("failed to allocate tecnicofs");
-			exit(EXIT_FAILURE);
-		}
+		perror("failed to allocate tecnicofs");
+		exit(EXIT_FAILURE);
+	}
+	fs->tecnicofs_lock = (lock)malloc(sizeof(struct lock));
+	if (!fs->tecnicofs_lock) {
+		perror("failed to allocate tecnicofs_lock");
+		exit(EXIT_FAILURE);
+	}
+
 	return fs;
 }
 
 void free_tecnicofs(tecnicofs fs){
 	free_tree(fs->bstRoot);
+	free(fs->tecnicofs_lock);
 	free(fs);
 }
 
