@@ -191,6 +191,9 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     /* Procura no vetor de ficheiros abertos se algum cliente tem este ficheiro aberto
     Em caso afirmativo, cancela a operacao de apagar o ficheiro */
     if (opened_files[search_result] != 0) { 
+        
+        printf("openfilesearchresult: %d\n", opened_files[search_result]);
+
         openLock(of_lock);
         openLock(fs->tecnicofs_lock);
         return FILE_IS_OPENED;
