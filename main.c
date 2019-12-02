@@ -17,8 +17,8 @@ tecnicofs* hash_tab;
 int sockfd;     //descritor de socket principal do servidor
 struct timeval start, end; //valores de tempo inicial e final
 
-/* lock of_lock;
- *///===========
+
+//===========
 //Funcao MAIN
 //===========
 int main(int argc, char* argv[]) {
@@ -36,26 +36,6 @@ int main(int argc, char* argv[]) {
 //Funcoes principais
 //==================
 
-void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]){
-    char input[MAX_INPUT_SIZE];
-
-    readCommandfromSocket(socketfd, input);
-
-    int numTokens = sscanf(input, "%c %s %s", command, vec[0], vec[1]); //scanf formatado 
-
-    if (numTokens > 4 || numTokens < 1) { // qualquer comando que nao tenha 2 ou 3 argumentos, e' invalido
-        fprintf(stderr, "Error: invalid command in Queue\n");
-        exit(EXIT_FAILURE);
-    } else if ((numTokens == 1 && *command != END_COMMAND) || (numTokens == 2 && *command != DELETE_COMMAND && *command != CLOSE_COMMAND)) { //teste para caso comando 'x' ,'z', 'd' 
-        fprintf(stderr, "Error: invalid command in Queue\n");
-        exit(EXIT_FAILURE);
-    }
-
-
-}
-
-
-
 //funcao chamada pelas threads consumidoras e trata de executar os comandos do vetor de comandos
 void *clientSession(void* socketfd) {
     int fd = *((int *)socketfd);
@@ -68,16 +48,17 @@ void *clientSession(void* socketfd) {
 
     //Bloqueia a interrupcao(signal)
     //Mascara de signals que queremos bloquear acesso pelas threads
-    blockSigThreads();
+    blockSigInt();
 
     //inicializa tabela de descritores de ficheiros
     for(i = 0; i < MAX_FILES_OPENED; i++)
         fd_table[i].iNumber = FD_EMPTY;
    
     while(1) { 
-        char command;
-        char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE];
-        int result = INT_MIN;
+        char command;   //char correspondente ao comando
+        char args[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]; //argumentos do comando
+        //valor default da variavel result. Se nao for alterado, indica que nao deve ser dada uma resposta ao cliente
+        int result = INT_MIN;   
 
         parseCommand(fd, &command, args);
 
@@ -121,7 +102,7 @@ void *clientSession(void* socketfd) {
                 exit(EXIT_FAILURE);
             }
         }
-
+        //funcao que devolve uma resposta ao cliente
         feedback(fd, result);
     }
 }
@@ -141,7 +122,7 @@ static void parseArgs (long argc, char* const argv[]){
         displayUsage(argv[0]);
     } else {
         if((nameSocket = (char*)malloc(sizeof(char)*(strlen(argv[1])+1))) == NULL) sysError("parseArgs(malloc)");
-        strcpy(nameSocket, argv[1]);  // XXX falta \0 ??
+        strcpy(nameSocket, argv[1]);
         if ((outputFile = (char*)malloc(sizeof(char)*(strlen(argv[2])+1))) == NULL) sysError("parseArgs(malloc)");
         strcpy(outputFile, argv[2]);
 
@@ -153,16 +134,17 @@ static void parseArgs (long argc, char* const argv[]){
 //=======
 //Runtime
 //=======
+
+//funcao que inicializa as estruturas utilizadas
 int startRuntime(){
     initSignal();       
     initOpenedFilesCounter();
     initHashTable(numberBuckets);
     inode_table_init();
-    //of_lock = (lock)malloc(sizeof(struct lock));
-    //initLock(of_lock);
     return socketInit(); 
 }
 
+//funcao que liberta as estruturas utilizadas
 void endRuntime(){
     closeSocket(sockfd);
     freeHashTab(numberBuckets);
@@ -181,6 +163,7 @@ void endRuntime(){
 void initHashTable(int size){
     int i = 0;
 	hash_tab = (tecnicofs*)malloc(size * sizeof(tecnicofs)); //alocacao da tabela para tecnicofs
+    if (hash_tab == NULL) sysError("initHashTable(malloc)");
 	for(i = 0; i < size; i++) {
 		hash_tab[i] = new_tecnicofs();          // aloca um tecnicofs (uma arvore)
 		initLock(hash_tab[i]->tecnicofs_lock);  // inicializa trinco desse tecnicofs (arvore)
@@ -204,26 +187,36 @@ void freeHashTab(int size){
     //Signals
     //+++++++
 
+//inicializa o sinal, associando ao SIGINT um novo comportamemto
 void initSignal(){
     struct sigaction act;
-    sigemptyset(&act.sa_mask);
-    sigaddset(&act.sa_mask, SIGINT);    
+    if (sigemptyset(&act.sa_mask) != 0) sysError("initSignal(sigemptyset)");
+    if (sigaddset(&act.sa_mask, SIGINT) != 0) sysError("initSignal(sigaddset)");    
     act.sa_sigaction = &endServer;
     act.sa_flags = SA_SIGINFO;
 
     if (sigaction(SIGINT, &act, NULL) < 0) sysError("initSignals(sigaction)");
 }
 
-void blockSigThreads(){
+//bloqueia a captacao de sinais 
+void blockSigInt(){
     //Mascara de signals que queremos bloquear acesso pelas threads
     sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGINT);
+    if (sigemptyset(&set) != 0) sysError("blockSigInt(sigemptyset)");
+    if (sigaddset(&set, SIGINT) != 0) sysError("blockSigInt(sigaddset)");
     if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) sysError("blockSigThreads(pthread_sigmask)");
 }
 
+//volta a permitir a captacao de sinais
+void unblockSigInt(){
+    //Mascara de signals que queremos bloquear acesso pelas threads
+    sigset_t set;
+    if (sigemptyset(&set) != 0) sysError("unblockSingInt(sigemptyset)");
+    if (sigaddset(&set, SIGINT) != 0) sysError("unblockSingInt(sigaddset)");
+    if (pthread_sigmask(SIG_UNBLOCK, &set, NULL) != 0) sysError("blockSigThreads(pthread_sigmask)");
+}
 
-/* A funcao devolve a diferenca entre tempo inicial e fical, em segundos*/
+/* A funcao devolve a diferenca entre tempo inicial e final, em segundos*/
 float time_taken(struct timeval start, struct timeval end) {
     float secs;
     float microseconds;
@@ -259,5 +252,3 @@ void endServer(){
                                         
     exit(EXIT_SUCCESS);
 }
-
-

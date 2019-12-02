@@ -10,6 +10,7 @@ int sockfd = NOT_CONNECTED; //inicialmente o cliente nao esta conectado
 *       - Erro se nao existir conexao (TECNICOFS_ERROR_NO_OPEN_SESSION)
 *       - Erro se o nome passado for vazio (TECNICOFS_ERROR_OTHER)
 *       - Erro de preexistencia de ficheiro (TECNICOFS_ERROR_FILE_ALREADY_EXISTS)
+*       - Erro se nao for possivel criar o ficheiro (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario (SUCCESS) 
 */
 int tfsCreate(char *filename, permission ownerPermissions, permission othersPermissions){
@@ -28,6 +29,7 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
     if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsCreate(read)");
     
     if (answer == ALREADY_EXISTS) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS; 
+    if (answer == MAX_FILES_INODE_TABLE) return TECNICOFS_ERROR_OTHER;
     
     return SUCCESS;
 }
@@ -41,6 +43,7 @@ int tfsCreate(char *filename, permission ownerPermissions, permission othersPerm
 *       - Erro se o nome passado for vazio (TECNICOFS_ERROR_OTHER)
 *       - Erro de inexistencia de ficheiro (TECNICOFS_ERROR_FILE_NOT_FOUND)
 *       - Erro se o ficheiro estiver aberto (TECNICOFS_ERROR_FILE_IS_OPEN)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Erro se o cliente nao tiver permissao para renomear o ficheiro (TECNICOFS_ERROR_PERMISSION_DENIED)
 *       - Caso contrario (SUCCESS) 
 */
@@ -63,6 +66,7 @@ int tfsDelete(char *filename) {
     if (answer == DOESNT_EXIST) return TECNICOFS_ERROR_FILE_NOT_FOUND; 
     if (answer == FILE_IS_OPENED) return TECNICOFS_ERROR_FILE_IS_OPEN;
     if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_PERMISSION_DENIED; 
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER;
 
     return SUCCESS;
 }
@@ -78,6 +82,7 @@ int tfsDelete(char *filename) {
 *       - Erro de inexistencia de ficheiro antigo (TECNICOFS_ERROR_FILE_NOT_FOUND)
 *       - Erro se o novo nome ja existir (TECNICOFS_ERROR_ALREADY_EXISTS)
 *       - Erro se o cliente nao tiver permissao para renomear o ficheiro (TECNICOFS_ERROR_PERMISSION_DENIED)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario (SUCCESS) 
 */
 int tfsRename(char *filenameOld, char *filenameNew){
@@ -100,6 +105,7 @@ int tfsRename(char *filenameOld, char *filenameNew){
     if (answer == DOESNT_EXIST) return TECNICOFS_ERROR_FILE_NOT_FOUND; 
     if (answer == ALREADY_EXISTS) return TECNICOFS_ERROR_FILE_ALREADY_EXISTS; 
     if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_PERMISSION_DENIED; 
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER;
 
     return SUCCESS;
 }
@@ -110,10 +116,12 @@ int tfsRename(char *filenameOld, char *filenameNew){
 *       “o 'filename' mode”
 *   Retorno:
 *       - Erro se nao existir conexao (TECNICOFS_ERROR_NO_OPEN_SESSION)
+*       - Erro caso o ficheiro ja esteja aberto (TECNICOFS_ERROR_FILE_IS_OPEN)
 *       - Erro se um dos nomes passados for vazio (TECNICOFS_ERROR_OTHER)
 *       - Erro de inexistencia de ficheiro (TECNICOFS_ERROR_FILE_NOT_FOUND)
 *       - Erro se o cliente nao tiver permissao para abrir o ficheiro (TECNICOFS_ERROR_PERMISSION_DENIED)
 *       - Erro se nao houver posicoes livres na tabela de ficheiros para abrir um novo ficheiro (TECNICOFS_ERROR_MAXED_OPEN_FILES)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario, retorna o fd onde o ficheiro ficou aberto 
 */
 int tfsOpen(char *filename, permission mode){
@@ -134,8 +142,10 @@ int tfsOpen(char *filename, permission mode){
     if (read(sockfd, &answer, INT_SIZE) != INT_SIZE) sysError("tfsOpen(read)");
 
     if (answer == DOESNT_EXIST) return TECNICOFS_ERROR_FILE_NOT_FOUND; 
+    if (answer == ALREADY_OPENED) return TECNICOFS_ERROR_FILE_IS_OPEN;
     if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_PERMISSION_DENIED;
-    if (answer == MAX_OPENED_FILES) return TECNICOFS_ERROR_MAXED_OPEN_FILES; 
+    if (answer == MAX_OPENED_FILES) return TECNICOFS_ERROR_MAXED_OPEN_FILES;
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER; 
         
     return answer;
 }
@@ -148,6 +158,7 @@ int tfsOpen(char *filename, permission mode){
 *       - Erro se nao existir conexao (TECNICOFS_ERROR_NO_OPEN_SESSION)
 *       - Erro se o ficheiro nao estiver aberto (TECNICOFS_ERROR_FILE_NOT_OPEN)
 *       - Erro se fd nao for uma posicao valida da tabela de ficheiros (TECNICOFS_ERROR_OTHER)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario (SUCCESS)
 */
 int tfsClose(int fd){
@@ -167,6 +178,8 @@ int tfsClose(int fd){
 
     if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
     if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER; 
+
 
     return SUCCESS;
 }
@@ -181,6 +194,7 @@ int tfsClose(int fd){
 *       - Erro se o ficheiro nao estiver aberto (TECNICOFS_ERROR_FILE_NOT_OPEN)
 *       - Erro se fd nao for uma posicao valida da tabela de ficheiros (TECNICOFS_ERROR_OTHER)
 *       - Erro se o cliente nao tiver permissao para ler do ficheiro (TECNICOFS_ERROR_INVALID_MODE)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario, retorna o numero de caracteres lidos
 */
 int tfsRead(int fd, char *buffer, int len){
@@ -208,6 +222,8 @@ int tfsRead(int fd, char *buffer, int len){
     if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
     if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
     if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_INVALID_MODE;
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER; 
+
     
     return answer; // numero de caracteres lidos (exclui o '\0')
 }
@@ -222,6 +238,7 @@ int tfsRead(int fd, char *buffer, int len){
 *       - Erro se o ficheiro nao estiver aberto (TECNICOFS_ERROR_FILE_NOT_OPEN)
 *       - Erro se fd nao for uma posicao valida da tabela de ficheiros (TECNICOFS_ERROR_OTHER)
 *       - Erro se o cliente nao tiver permissao para ler do ficheiro (TECNICOFS_ERROR_INVALID_MODE)
+*       - Erro se os argumentos nao forem validos (TECNICOFS_ERROR_OTHER)
 *       - Caso contrario (SUCCESS)
 */
 int tfsWrite(int fd, char *buffer, int len){
@@ -251,6 +268,7 @@ int tfsWrite(int fd, char *buffer, int len){
     if (answer == NOT_OPENED) return TECNICOFS_ERROR_FILE_NOT_OPEN; 
     if (answer == INDEX_OUT_OF_RANGE) return TECNICOFS_ERROR_OTHER;
     if (answer == PERMISSION_DENIED) return TECNICOFS_ERROR_INVALID_MODE;
+    if (answer == INVALID_ARGS) return TECNICOFS_ERROR_OTHER; 
 
     return SUCCESS; 
 }

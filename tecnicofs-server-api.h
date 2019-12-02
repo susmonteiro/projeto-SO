@@ -43,6 +43,7 @@ typedef struct  {
 void initOpenedFilesCounter();
 void clearClientOpenedFilesCounter(tecnicofs_fd *file_tab);
 void freeOpenedFilesCounter();
+void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]);
 
 //===================
 // Rotina de comandos

@@ -15,8 +15,8 @@
 #include "erro.h"
 #include "constants.h"
 
-/* SOMAXCONN e' o numero maximo de ligacoes que o servidor pode ter simultaneamente
-optamos por definir que este corresponde tambem ao numero maximo de ligacoes 
+/* SOMAXCONN e' o numero maximo de ligacoes que o servidor pode ter simultaneamente.
+Optamos por definir que este corresponde tambem ao numero maximo de ligacoes 
 (e consequentemente threads escravas) que uma execucao do programa permite */
 #define MAXCONNECTIONS SOMAXCONN    
 

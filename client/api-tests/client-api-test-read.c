@@ -28,12 +28,49 @@ int main(int argc, char** argv) {
     int fd = -1;
     assert((fd = tfsOpen("abc", RW)) == 0);
     assert((fd = tfsOpen("bla", RW)) == 1);
-    fgets(readBuffer, 5, stdin);
     assert((fd = tfsOpen("a", READ)) == 2);
-    assert((fd = tfsOpen("b", RW)) == 3);
-    assert((fd = tfsOpen("c", RW)) == 4);
-    assert((fd = tfsOpen("ab", RW)) == TECNICOFS_ERROR_MAXED_OPEN_FILES);
-    fgets(readBuffer, 5, stdin);
+    assert((fd = tfsOpen("c", RW)) == 3);
+    // fgets(readBuffer, 5, stdin);
+
+    assert(tfsWrite(fd, "12345", 5) == 0);
+    assert(tfsClose(7) == TECNICOFS_ERROR_OTHER);
+    assert(tfsWrite(fd, "blica", 5) == 0);
+
+    assert(tfsRead(fd, readBuffer, 6) == 5);
+    printf("Content read: %s\n", readBuffer);
+
+    memset(readBuffer, 0, 10*sizeof(char));
+    assert(tfsClose(fd) == 0);
+
+    assert(tfsDelete("ab")==0);
+
+    assert(tfsRename("susu", "bubu")==0);
+    assert((fd = tfsOpen("bubu", RW)) == 3);
+    assert(tfsWrite(fd, "puli", 5) == 0);
+    assert(tfsRead(fd, readBuffer, 6) == 4);
+    printf("Content read: %s\n", readBuffer);
+
+    memset(readBuffer, 0, 10*sizeof(char));
+    assert(tfsClose(fd) == 0);
+    assert(tfsClose(fd) == TECNICOFS_ERROR_FILE_NOT_OPEN);
+
+    assert((fd = tfsOpen("c", RW)) == 3);
+    assert(tfsRead(fd, readBuffer, 6) == 5);
+    printf("REABERTOContent read: %s\n", readBuffer);
+    memset(readBuffer, 0, 10*sizeof(char));
+
+    assert(tfsClose(fd) == 0);
+    assert((fd = tfsOpen("dudu", RW)) == 3);
+    //abrir duas vezes o mesmo
+    printf("atualfd:%d\n", tfsOpen("dudu", RW));
+    // assert((fd = tfsOpen("dudu", RW)) == TECNICOFS_ERROR_FILE_IS_OPEN);
+    
+    // assert(tfsOpen("bc", RW) == TECNICOFS_ERROR_MAXED_OPEN_FILES);
+
+
+
+
+
     //     // assert((fd = tfsOpen("bla", RW)) == 1);
 //     // assert(tfsClose(fd) == SUCCESS);
 //     // assert((fd = tfsOpen("a", READ)) == 1);

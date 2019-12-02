@@ -25,6 +25,9 @@
 #define NOT_OPENED -5
 #define INDEX_OUT_OF_RANGE -6
 #define FILE_IS_OPENED -7
+#define MAX_FILES_INODE_TABLE -8
+#define INVALID_ARGS -9
+#define ALREADY_OPENED -10
 
 
 #endif /* CONSTANTS_H */

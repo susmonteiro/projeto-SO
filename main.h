@@ -27,7 +27,6 @@
 //=====================
 static void displayUsage (const char* appName);
 static void parseArgs (long argc, char* const argv[]);
-void parseCommand(int socketfd, char* command, char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE]);
 
 //===========================
 // Handler direto de clientes
@@ -44,7 +43,8 @@ void initHashTable(int size);
 void freeHashTab(int size);
 // Signals
 void initSignal();
-void blockSigThreads();
+void blockSigInt();
+void unblockSigInt();
 void endServer();
 // Misc
 float time_taken(struct timeval start, struct timeval end);

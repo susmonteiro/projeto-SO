@@ -9,6 +9,8 @@ extern int idx;         //posicao atual de slave_threads
 
 extern void *clientSession(void* socketfd);
 extern void endServer();
+extern void blockSigInt();
+extern void unblockSigInt();
 
 //inicializa o socket do servidor
 int socketInit() {
@@ -22,7 +24,7 @@ int socketInit() {
 
     if(sprintf(pwd, "%s%s", SOCKETDIR, nameSocket) != str_size-1) sysError("socketInit(pwdName)");
 
-    unlink(pwd);
+    if (unlink(pwd) != 0) sysError("socketInit(unlink)");
 
     bzero((char*) &serv_addr, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
@@ -33,7 +35,7 @@ int socketInit() {
     if(bind(sockfd, (struct sockaddr*) &serv_addr, servlen) < 0)
         sysError("SocketInit(bind)");
 
-    listen(sockfd, MAXCONNECTIONS);
+    if (listen(sockfd, MAXCONNECTIONS) != 0) sysError("socketInit(listen)");
     return sockfd;
 }
 
@@ -74,13 +76,16 @@ void processClient(int sockfd) {
 
     for(;;) {
         clilen = sizeof(cli_addr);
-        newsockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
+        if ((newsockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen)) == -1) sysError("processCliente(accept)");
         if(newsockfd < 0) sysError("processClient(accept)");
         
-
         //Confirma espaco para aceitar
         if(idx == MAXCONNECTIONS) endServer(); //quando o maximo de ligacoes possivel for atingido, terminamos ordeiramente o servidor
+        
+        blockSigInt();  //bloqueamos os sinais antes e depois da funcao pthread_create
         if(pthread_create(&slave_threads[idx], NULL, clientSession, (void*) &newsockfd)) sysError("processClient(thread)");
+        unblockSigInt();
+        
         idx++; //apenas acessivel pela tarefa principal
     }
 }

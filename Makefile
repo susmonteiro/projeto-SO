@@ -55,7 +55,7 @@ socket-mutex.o: socket.c socket.h
 tecnicofs-server-api-mutex.o: tecnicofs-server-api.c tecnicofs-server-api.h 
 
 main-mutex.o: CFLAGS+=-DMUTEX
-main-mutex.o: main.c fs.h lib/bst.h sync.h lib/hash.h
+main-mutex.o: main.c fs.h lib/bst.h sync.h lib/hash.h erro.h socket.h tecnicofs-server-api.h
 tecnicofs-mutex: lib/bst-mutex.o fs-mutex.o sync-mutex.o main-mutex.o lib/hash.o erro-mutex.o socket-mutex.o tecnicofs-server-api-mutex.o
 
 ### RWLOCK ###
@@ -76,10 +76,11 @@ erro-rwlock.o: erro.c erro.h
 
 socket-rwlock.o: socket.c socket.h
 
-tecnicofs-server-api-rwlock.o: tecnicofs-server-api.c tecnicofs-server-api.h 
+tecnicofs-server-api-rwlock.o: CFLAGS+=-DRWLOCK
+tecnicofs-server-api-rwlock.o: tecnicofs-server-api.c tecnicofs-server-api.h
 
 main-rwlock.o: CFLAGS+=-DRWLOCK
-main-rwlock.o: main.c fs.h lib/bst.h lib/hash.h lib/inodes.h sync.h
+main-rwlock.o: main.c main.h fs.h lib/bst.h lib/hash.h lib/inodes.h sync.h erro.h socket.h tecnicofs-server-api.h
 tecnicofs-rwlock: lib/bst-rwlock.o fs-rwlock.o sync-rwlock.o lib/inodes-rwlock.o main-rwlock.o lib/hash.o erro-rwlock.o socket-rwlock.o tecnicofs-server-api-rwlock.o
 
 
