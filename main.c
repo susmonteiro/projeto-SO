@@ -94,7 +94,7 @@ void clearClientOpenedFilesCounter(tecnicofs_fd *file_tab) {
     puts("wtf");
     
     closeWriteLock(of_lock);
-    for(i = 0; i < MAX_OPENED_FILES; i++) {
+    for(i = 0; i < MAX_FILES_OPENED; i++) {
         if(file_tab[i].iNumber != FD_EMPTY){
             opened_files[file_tab[i].iNumber] -= 1;
             printf("openfies[%d]:%d\n", file_tab[i].iNumber, opened_files[file_tab[i].iNumber]);
