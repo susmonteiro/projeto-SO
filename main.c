@@ -163,10 +163,12 @@ int commandCreate(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid) {
 /*  Funcao do servidor que trata do pedido do cliente para apagar um ficheiro
 *
 *   Representacao do comando para criar um ficheiro:
-*       [d, 'filename', 'permissions']
+*       [d, 'filename']
 *   Retorno:
-*       - Erro de preexistencia de ficheiro (ALREADY_EXISTS)
-*       - Caso contrario (SUCESSO) 
+*       - Erro de inexistencia de ficheiro (DOESNT_EXIST)
+*       - Erro se o ficheiro estiver aberto (FILE_IS_OPENED)
+*       - Erro se o cliente nao tiver permissao para renomear o ficheiro (PERMISSION_DENIED)
+*       - Caso contrario (SUCCESS) 
 */
 int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     int search_result;
@@ -179,7 +181,9 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
         return DOESNT_EXIST;
 
     closeReadLock(of_lock);
-    if (opened_files[search_result] != 0) {
+    /* Procura no vetor de ficheiros abertos se algum cliente tem este ficheiro aberto
+    Em caso afirmativo, cancela a operacao de apagar o ficheiro */
+    if (opened_files[search_result] != 0) { 
         openLock(of_lock);
         return FILE_IS_OPENED;
     }
@@ -198,12 +202,22 @@ int commandDelete(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     return SUCCESS;
 }
 
-//Comando renomear
+/*  Funcao do servidor que trata do pedido do cliente para renomear um ficheiro no servidor
+*
+*   Representacao do comando para criar um ficheiro:
+*       [r, 'filenameOld', 'filenameNew']
+*   Retorno:
+*       - Erro se o novo nome ja existir (ALREADY_EXISTS)
+*       - Erro de inexistencia de ficheiro antigo (DOESNT_EXIST)
+*       - Erro se o cliente nao tiver permissao para renomear o ficheiro (PERMISSION_DENIED)
+*       - Caso contrario (SUCCESS) 
+*/
 int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 	int search_result;           //inumber retornado pela funcao lookup
     uid_t owner;
     int s1, s2;
     tecnicofs fs1, fs2;
+
     s1 = searchHash(vec[0], numberBuckets);
     s2 = searchHash(vec[1], numberBuckets);
 
@@ -216,13 +230,13 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
     }
     
     closeWriteLock(fs2->tecnicofs_lock);
-    if (lookup(fs2, vec[1]) != -1) { //se ja existir, a operacao e' cancelada sem devolver erro
+    if (lookup(fs2, vec[1]) != -1) { // se o novo nome ja existir, a operacao e' cancelada sem devolver erro
 		openLock(fs2->tecnicofs_lock);
 		return ALREADY_EXISTS;
     }
     if (fs1 != fs2) closeWriteLock(fs1->tecnicofs_lock);
 
-    if ((search_result = lookup(fs1, vec[0])) == -1) {
+    if ((search_result = lookup(fs1, vec[0])) == -1) { // se o ficheiro atual nao existir, a operacao e' cancelada
 		openLock(fs1->tecnicofs_lock);
 		if (fs1 != fs2) openLock(fs2->tecnicofs_lock); // nao fazer unlock 2 vezes da mesma arvore
 		return DOESNT_EXIST;
@@ -245,17 +259,15 @@ int commandRename(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid){
 }
 
 
-/*  Funcao do servidor que trata do pedido do cliente para apagar um ficheiro
+/*  Funcao do servidor que trata do pedido do cliente para abrir um ficheiro
 *
 *   Representacao do comando para criar um ficheiro:
-*       [d, 'filename', 'permissions']
+*       [o, 'filename', mode]
 *   Retorno:
-*       - Erro de preexistencia de ficheiro (ALREADY_EXISTS)
-*       - Caso contrario (SUCESSO) 
-*
-*   Consideramos que um cliente pode abrir duas vezes o mesmo ficheiro, ficando 
-* guardado em duas posicoes diferentes da tabela de ficheiros abertos, visto que
- nao e' especificado no enunciado
+*       - Erro de inexistencia de ficheiro (DOESNT_EXISTS)
+*       - Erro se o cliente nao tiver permissao para abrir o ficheiro (PERMISSION_DENIED)
+*       - Erro se nao houver posicoes livres na tabela de ficheiros para abrir um novo ficheiro (TECNICOFS_ERROR_MAXED_OPEN_FILES)
+*       - Caso contrario, retorna o fd onde o ficheiro ficou aberto 
 */
 int commandOpen(char vec[MAX_ARGS_INPUTS][MAX_INPUT_SIZE], uid_t uid, tecnicofs_fd *file_tab){
     int search_result, idx_fd;
